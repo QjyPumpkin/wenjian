@@ -114,7 +114,7 @@ class handle_data:
 
         g.append(Y[:, 0]- Y_ref[:, 0])    
         for i in range(self.horizon-1):
-            Y_next_ = 1    # Y_next read from np.saved data
+            Y_next_ = Y_f[:,:,i]    # Y_next read from np.saved data
             g.append(Y[:, i+1]-Y_next_)
 
         lambda_s = 7.5e8

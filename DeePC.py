@@ -38,10 +38,10 @@ class handle_data:
         roll_ = ca.SX.sym('roll_')
         pitch_ = ca.SX.sym('pitch_')
         yaw_ = ca.SX.sym('yaw_')
-        ## define output shape = 9/12?
+        ## define output shape = 9
         states_ = ca.vcat([x_, y_, z_, vx_, vy_, vz_, roll_, pitch_, yaw_])
         num_states = states_.size()[0]
-        print("num_states is:", num_states)
+        # print("num_states is:", num_states)
 
         # Vertical trajectory in z-direction
         self.trajectory = np.array(
@@ -82,17 +82,17 @@ class handle_data:
 
         # DeePC
         # states and parameters
-        U = ca.SX.sym('U', num_controls, self.horizon-1)  # (3,24)  reshape?
+        U = ca.SX.sym('U', num_controls, self.horizon-1)  # (3,25)  reshape?
         Y = ca.SX.sym('Y', num_states, self.horizon)  # (9,25)
-        G = ca.SX.sym('G', (num_controls+num_states)*(Tini+Tf), 1)  #(372,1)
-        # G = ca.SX.sym('G', Td-L+1, 1)    # (301,1)
-        U_ref = ca.SX.sym('U_ref', num_controls, self.horizon-1) #(3,24)
+        # G = ca.SX.sym('G', (num_controls+num_states)*(Tini+Tf), 1)  #(372,1)
+        G = ca.SX.sym('G', Td-L+1, 1)    # (301,1)
+        U_ref = ca.SX.sym('U_ref', num_controls, self.horizon-1) #(3,25)
         Y_ref = ca.SX.sym('Y_ref', num_states, self.horizon) #(9,25)
-        G_ref = ca.SX.sym('G_ref', (num_controls+num_states)*(Tini+Tf), 1) #(372,1)
+        G_ref = ca.SX.sym('G_ref', Td-L+1, 1) #(372,1)
         u_ini = ca.SX.sym('u_ini', Tini, num_controls) # (6,3) ->(18,1)
         y_ini = ca.SX.sym('y_ini', Tini, num_states) # (6,9)  ->(54,1)
         U_p = ca.SX.sym('U_p', num_controls*Tini, Td-L+1)  # (18,301)
-        U_f = ca.SX.sym('U_f', num_controls*Tf, Td-L+1)  # (3*25,301)
+        U_f = ca.SX.sym('U_f', num_controls*(Tf-1), Td-L+1)  # (3*24,301)
         Y_p = ca.SX.sym('Y_p', num_states*Tini, Td-L+1)  # (9*6,301)
         Y_f = ca.SX.sym('Y_f', num_states*Tf, Td-L+1)  # (9*25,301)
         U2Y = ca.vertcat(Y_f, U_p, U_f)  # (18+75+225,301)
@@ -125,10 +125,9 @@ class handle_data:
         print("G shape is \n", G.shape)
         # print("Yp shape is \n", Y_p.shape)
         # g_norm = np.linalg.norm(Yp_flat@G-y_ini, ord=2)**2  
-        for i in range(self.horizon):
-            g_norm = ca.norm_2(ca.mtimes([Y_p[:,i].T,G[:num_states*Tini,:]])-ca.reshape(y_ini, (-1, 1)))**2   # G from Yp
-            print("g_norm shape is \n", g_norm.shape)
-            obj = obj + lambda_s*g_norm
+        g_norm = ca.norm_2(ca.mtimes([Y_p,G])-ca.reshape(y_ini, (-1, 1)))**2   # G from Yp
+        # print("g_norm shape is \n", g_norm.shape)
+        obj = obj + lambda_s*g_norm
         # for i in range(self.horizon-1):
         #     x_next_ = self.RK_4(X[:, i], U[:, i], F_ext)
 
@@ -141,12 +140,12 @@ class handle_data:
         # constraints g
         g = []
         variables = ca.vertcat(ca.reshape(Y, (-1, 1)), ca.reshape(u_ini, (-1, 1)), ca.reshape(U, (-1, 1)))    # (315,1) 
-        print("variables shape is :",variables.shape)    #(315,1) 
+        # print("variables shape is :",variables.shape)    #(315,1) 
 
         # for i in range(self.horizon-1):  # first Y_next_ read from the first row from saved Y_f file 
             # Y_next_ = ca.mtimes(Y_f[:, i], G) # Y_next_ computed: y = Y_f*G
-        U2Y_sx = ca.mtimes(U2Y.T, G[num_states*Tini:(num_states+num_controls)*(Tini+Tf),:]) # convert U2Y to casadi SX variable (,1)
-        print("U2Y_sx shape is \n", U2Y_sx.shape)
+        U2Y_sx = ca.mtimes(U2Y, G) # convert U2Y to casadi SX variable (,1)
+        # print("U2Y_sx shape is \n", U2Y_sx.shape)
         g.append(U2Y_sx - variables)    # shape missmatch
         # print("g is:", g)
         
@@ -259,12 +258,15 @@ if __name__ == '__main__':
     initial_control = np.zeros((Tini, n_controls))
     initial_states = np.zeros((Tini, n_states))
     init_state = np.array([0.0]*n_states)
-    print("init_state shape is: \n", init_state.shape)
+    # print("init_state shape is: \n", init_state.shape)
     current_state = init_state.copy() 
     opt_commands = np.zeros(((N-1)*n_controls, Td-L+1))  
     next_states = np.zeros((N*n_states, Td-L+1))  # UYG shape
+    # G_guess = np.zeros((Td-L+1, 1))
     G_guess = np.zeros((Td-L+1, 1))
-    control_ref = np.array([0.0]*n_controls)
+    control_ref = np.zeros((n_controls, Tf-1))
+    for i in range(Tf-1):
+        control_ref[2,i] = 9.8066
     # control_ref = np.zeros(((N-1)*n_controls, Td-L+1))
     
 
@@ -277,7 +279,7 @@ if __name__ == '__main__':
     for i in range(Td):
         H_u = DeePC.hankel(saved_u[:], L, Td-L+1)
     # print("Hankel_u is:", H_u)
-    print("Hankel_u's shape is:", H_u.shape)
+    # print("Hankel_u's shape is:", H_u.shape)
 
     ## states to Hankel
     saved_y = np.load('../Data_MPC/MPC_states.npy', allow_pickle= True)
@@ -285,14 +287,14 @@ if __name__ == '__main__':
     for i in range(Td):
         H_y = DeePC.hankel(saved_y[:], L, Td-L+1)
     # print('saved states \n', saved_y)
-    print("Hankel_y's shape is:", H_y.shape)
+    # print("Hankel_y's shape is:", H_y.shape)
 
     ## data collection for state and controls
     ### divide HM into two parts: past and future
     U_p = np.zeros((Tini, Td-L+1, saved_u.shape[1]))   
     U_f = np.zeros(())
     U_p = H_u[0:Tini,:,:]
-    U_f = H_u[Tini:,:,:]
+    U_f = H_u[Tini:-1,:,:]
     # Up_flat = U_p.reshape(n_controls*Tini, Td-L+1)
     # Up_flat = U_p.reshape((Tini*(Td-L+1),saved_u.shape[1]))
     # print("U_p \n", U_p)  # shape Up(6, 301, 3)   (,3)
@@ -344,8 +346,8 @@ if __name__ == '__main__':
     next_trajectory = init_trajectory.copy()
     
     ## set lb and ub
-    lbg = 0.0
-    ubg = 0.0
+    lbg = np.zeros((Td-L+1, 1))
+    ubg = np.zeros((Td-L+1, 1))
     lbx = []
     ubx = []
     for _ in range(N-1):  # np.deg2rad is x*pi/180
@@ -354,9 +356,9 @@ if __name__ == '__main__':
     for _ in range(N):
         lbx = lbx + [-np.inf]*n_states
         ubx = ubx + [np.inf]*n_states
-    for _ in range(N):  # lbG ubG
-        lbx = lbx + [-np.inf]*(n_controls*2+n_states*2)
-        ubx = ubx + [np.inf]*(n_controls*2+n_states*2)
+    # lbG ubG vector
+    lbx = lbx + [-np.inf]*(Td-L+1)
+    ubx = ubx + [np.inf]*(Td-L+1)
 
     # for saving data
     t0 = 0
@@ -367,12 +369,12 @@ if __name__ == '__main__':
     traj_c = []
 
     # start DeePC
-    sim_time = 600 # Td?
+    sim_time = 300 # Td?
     deepc_iter = 0
     index_time = []
     start_time = time.time()
 
-    while(deepc_iter < 2):
+    while(deepc_iter < 1):
         ## set parameters
         control_params = ca.vertcat(control_ref.reshape(-1, 1), deepc_obj.trajectory.reshape(-1, 1), initial_control.reshape(-1, 1), initial_states.reshape(-1, 1))
         ## initial guess of the optimization targets
@@ -387,25 +389,25 @@ if __name__ == '__main__':
         # g_opt = estimated_opt(3)
         deepc_u_ = estimated_opt[:int(n_controls*(N-1))].reshape(N-1, n_controls)
         deepc_y_ = estimated_opt[int(n_controls*(N-1)):int(n_controls*(N-1)+n_states*N)].reshape(N, n_states)
-        deepc_g_ = estimated_opt[int(n_controls*(N-1)+n_states*N):].reshape(N, n_states)   # G shape?
-        print('deepc u \n',deepc_u_)
-        print('deepc y \n',deepc_y_)
-        print('deepc_g \n',deepc_g_)
+        deepc_g_ = estimated_opt[int(n_controls*(N-1)+n_states*N):].reshape(Td-L+1, 1)   # G shape?
+        # print('deepc u \n',deepc_u_.shape)
+        # print('deepc y \n',deepc_y_.shape)
+        # print('deepc_g \n',deepc_g_.shape)
 
-        # save results
-        u_c.append(deepc_u_[0, :])
-        t_c.append(t0)
-        x_c.append(current_state)
-        x_states.append(deepc_y_)
-        ## the localization system
-        t0, current_state, opt_commands, next_states = deepc_obj.model_based_movement(current_state, deepc_u_[0, :], t0, deepc_u_, deepc_y_) # return t0+self.Ts, x_next, next_cmd_, next_s_
-        # next_trajectories = deepc_obj.vertical_trajectory(current_state)
-        # print(next_states)
-        next_trajectories = deepc_obj.circle_trajectory(current_state, deepc_iter)
-        traj_c.append(next_trajectories[1])
-        # print(next_trajectories[:3])
-        # print('current {}'.format(current_state))
-        # print('control {}'.format(deepc_u_[0]))
-        deepc_iter += 1
+        # # save results
+        # u_c.append(deepc_u_[0, :])
+        # t_c.append(t0)
+        # x_c.append(current_state)
+        # x_states.append(deepc_y_)
+        # ## the localization system
+        # t0, current_state, opt_commands, next_states = deepc_obj.model_based_movement(current_state, deepc_u_[0, :], t0, deepc_u_, deepc_y_) # return t0+self.Ts, x_next, next_cmd_, next_s_
+        # # next_trajectories = deepc_obj.vertical_trajectory(current_state)
+        # # print(next_states)
+        # next_trajectories = deepc_obj.circle_trajectory(current_state, deepc_iter)
+        # traj_c.append(next_trajectories[1])
+        # # print(next_trajectories[:3])
+        # # print('current {}'.format(current_state))
+        # # print('control {}'.format(deepc_u_[0]))
+        # deepc_iter += 1
 
  

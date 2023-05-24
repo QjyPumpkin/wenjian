@@ -82,16 +82,16 @@ class handle_data:
 
         # DeePC
         # states and parameters
-        U = ca.SX.sym('U', num_controls, self.horizon-1)  # (3,25)  reshape?
+        U = ca.SX.sym('U', num_controls, self.horizon-1)  # (3,24) 
         Y = ca.SX.sym('Y', num_states, self.horizon)  # (9,25)
         # G = ca.SX.sym('G', (num_controls+num_states)*(Tini+Tf), 1)  #(372,1)
         G = ca.SX.sym('G', Td-L+1, 1)    # (301,1)
-        U_ref = ca.SX.sym('U_ref', num_controls, self.horizon-1) #(3,25)
+        U_ref = ca.SX.sym('U_ref', num_controls, self.horizon-1) #(3,24)
         Y_ref = ca.SX.sym('Y_ref', num_states, self.horizon) #(9,25)
-        G_ref = ca.SX.sym('G_ref', Td-L+1, 1) #(372,1)
+        G_ref = ca.SX.sym('G_ref', Td-L+1, 1) #(301,1)
         u_ini = ca.SX.sym('u_ini', Tini, num_controls) # (6,3) ->(18,1)
         y_ini = ca.SX.sym('y_ini', Tini, num_states) # (6,9)  ->(54,1)
-        U_p = ca.SX.sym('U_p', num_controls*Tini, Td-L+1)  # (18,301)
+        U_p = ca.SX.sym('U_p', num_controls*Tini, Td-L+1)  # (3*6,301)
         U_f = ca.SX.sym('U_f', num_controls*(Tf-1), Td-L+1)  # (3*24,301)
         Y_p = ca.SX.sym('Y_p', num_states*Tini, Td-L+1)  # (9*6,301)
         Y_f = ca.SX.sym('Y_f', num_states*Tf, Td-L+1)  # (9*25,301)
@@ -151,7 +151,7 @@ class handle_data:
         
         # Regularization OCP
         opt_variables = ca.vertcat(ca.reshape(U, -1, 1), ca.reshape(Y, -1, 1), ca.reshape(G, -1, 1))
-        opt_params = ca.vertcat(ca.reshape(U_ref, -1, 1), ca.reshape(Y_ref, -1, 1), ca.reshape(u_ini, -1, 1), ca.reshape(y_ini, -1, 1)， ca.reshape(U2Y, -1, 1))
+        opt_params = ca.vertcat(ca.reshape(U_ref, -1, 1), ca.reshape(Y_ref, -1, 1), ca.reshape(u_ini, -1, 1), ca.reshape(y_ini, -1, 1)， ca.reshape(U_p, -1, 1)，ca.reshape(U_f, -1, 1), ca.reshape(Y_p, -1, 1), ca.reshape(Y_f, -1, 1) )
         nlp_prob = {'f': obj, 'x':opt_variables, 'p':opt_params,'g':ca.vertcat(*g)}
         opts_setting = {'ipopt.max_iter':200, 'ipopt.print_level':1, 'print_time':0, 'ipopt.acceptable_tol':1e-8, 'ipopt.acceptable_obj_change_tol':1e-6, 'ipopt.warm_start_init_point':'no'}
 
@@ -255,16 +255,15 @@ if __name__ == '__main__':
     dt = 0.1
     N = Tf
     deepc_obj = handle_data(state_dim=n_states, dt=dt, N=N)
-    initial_control = np.zeros((Tini, n_controls))
-    initial_states = np.zeros((Tini, n_states))
-    init_state = np.array([0.0]*n_states)
+    initial_control = np.zeros((Tini, n_controls))   # (6,3)
+    initial_states = np.zeros((Tini, n_states))      # (6,9)
+    init_state = np.array([0.0]*n_states)      # (9,1)
     # print("init_state shape is: \n", init_state.shape)
-    current_state = init_state.copy() 
-    opt_commands = np.zeros(((N-1)*n_controls, Td-L+1))  
-    next_states = np.zeros((N*n_states, Td-L+1))  # UYG shape
-    # G_guess = np.zeros((Td-L+1, 1))
-    G_guess = np.zeros((Td-L+1, 1))
-    control_ref = np.zeros((n_controls, Tf-1))
+    current_state = init_state.copy()          # (9,1)
+    opt_commands = np.zeros((n_controls, Tf))   # (3,24)
+    next_states = np.zeros((n_states, Tf))   # (9,25)
+    G_guess = np.zeros((Td-L+1, 1))   # (301,1)
+    control_ref = np.zeros((n_controls, Tf-1))   # (3,24)
     for i in range(Tf-1):
         control_ref[2,i] = 9.8066
     # control_ref = np.zeros(((N-1)*n_controls, Td-L+1))
@@ -291,29 +290,25 @@ if __name__ == '__main__':
 
     ## data collection for state and controls
     ### divide HM into two parts: past and future
-    U_p = np.zeros((Tini, Td-L+1, saved_u.shape[1]))   
-    U_f = np.zeros(())
+    U_p = np.zeros((Tini, Td-L+1, saved_u.shape[1]))   # (6,301,3)
+    U_f = np.zeros(())    # (24,301,3)
     U_p = H_u[0:Tini,:,:]
     U_f = H_u[Tini:-1,:,:]
     # Up_flat = U_p.reshape(n_controls*Tini, Td-L+1)
-    # Up_flat = U_p.reshape((Tini*(Td-L+1),saved_u.shape[1]))
-    # print("U_p \n", U_p)  # shape Up(6, 301, 3)   (,3)
-    # print("Up_flat \n", Up_flat)
-    # print("U_f \n", U_f)
-    # print("Uf_flat \n", Uf_flat)
+    # print("U_p \n", U_p.shape)  # shape Up(6, 301, 3) 
+    # print("U_f \n", U_f.shape)
 
-    Y_p = np.zeros((Tini, Td-L+1, saved_y.shape[1]))
-    Y_f = np.zeros(())
+    Y_p = np.zeros((Tini, Td-L+1, saved_y.shape[1]))   # (6,301,9)
+    Y_f = np.zeros(())        # (25,301,9)
     Y_p = H_y[0:Tini,:,:]
     Y_f = H_y[Tini:,:,:]
-    # print("Y_p \n", Y_p)
-    # print("Y_f \n", Y_f)
+    # print("Y_p \n", Y_p.shape)
+    # print("Y_f \n", Y_f.shape)
 
     # initial condition = Tini most recent past but simulate for the first step
     # u_ini = [0.0, 0.0, 9.8066]
     # u_ini = U_p[:, 0, :]  # shape [6,3]
     # print("uini is", u_ini)
-    
     # y_ini = [-0.5, -0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
     # y_ini = Y_p[:, 0, :].reshape((6,1,9))  # shape[]
     # print("yini is", y_ini)
@@ -339,6 +334,11 @@ if __name__ == '__main__':
                  [0.7, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                  [0.8, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                  [0.9, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                 [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 
+                 [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                 [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                 [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                 [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                  [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
                 ])
     
@@ -346,7 +346,7 @@ if __name__ == '__main__':
     next_trajectory = init_trajectory.copy()
     
     ## set lb and ub
-    lbg = np.zeros((Td-L+1, 1))
+    lbg = np.zeros((Td-L+1, 1))   # (301,1)
     ubg = np.zeros((Td-L+1, 1))
     lbx = []
     ubx = []
@@ -376,7 +376,7 @@ if __name__ == '__main__':
 
     while(deepc_iter < 1):
         ## set parameters
-        control_params = ca.vertcat(control_ref.reshape(-1, 1), deepc_obj.trajectory.reshape(-1, 1), initial_control.reshape(-1, 1), initial_states.reshape(-1, 1))
+        control_params = ca.vertcat(control_ref.reshape(-1, 1), deepc_obj.trajectory.reshape(-1, 1), initial_control.reshape(-1, 1), initial_states.reshape(-1, 1), U_p.reshape(-1, 1), U_f.reshape(-1, 1), Y_p.reshape(-1, 1), Y_f.reshape(-1, 1))
         ## initial guess of the optimization targets
         init_control = ca.vertcat(opt_commands.reshape(-1, 1), next_states.reshape(-1, 1), G_guess.reshape(-1, 1))
         ## solve the problem
@@ -387,9 +387,9 @@ if __name__ == '__main__':
         estimated_opt = sol['x'].full()
         # y_opt = estimated_opt(1)   # reshape
         # g_opt = estimated_opt(3)
-        deepc_u_ = estimated_opt[:int(n_controls*(N-1))].reshape(N-1, n_controls)
-        deepc_y_ = estimated_opt[int(n_controls*(N-1)):int(n_controls*(N-1)+n_states*N)].reshape(N, n_states)
-        deepc_g_ = estimated_opt[int(n_controls*(N-1)+n_states*N):].reshape(Td-L+1, 1)   # G shape?
+        deepc_u_ = estimated_opt[:int(n_controls*(N-1))].reshape(n_controls, N-1)   # (24,3)
+        deepc_y_ = estimated_opt[int(n_controls*(N-1)):int(n_controls*(N-1)+n_states*N)].reshape(n_states, N)     # (24,9)
+        deepc_g_ = estimated_opt[int(n_controls*(N-1)+n_states*N):].reshape(Td-L+1, 1)   # G shape?    # (301,1)
         # print('deepc u \n',deepc_u_.shape)
         # print('deepc y \n',deepc_y_.shape)
         # print('deepc_g \n',deepc_g_.shape)

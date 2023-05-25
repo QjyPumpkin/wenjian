@@ -65,6 +65,11 @@ class handle_data:
                 [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
                 ])
     
@@ -257,9 +262,9 @@ if __name__ == '__main__':
     deepc_obj = handle_data(state_dim=n_states, dt=dt, N=N)
     initial_control = np.zeros((Tini, n_controls))   # (6,3)
     initial_states = np.zeros((Tini, n_states))      # (6,9)
-    init_state = np.array([0.0]*n_states)      # (9,1)
+    init_state = np.array([0.0]*n_states)      # (1,9)
     # print("init_state shape is: \n", init_state.shape)
-    current_state = init_state.copy()          # (9,1)
+    current_state = init_state.copy()          # (1,9)
     opt_commands = np.zeros((n_controls, Tf))   # (3,24)
     next_states = np.zeros((n_states, Tf))   # (9,25)
     G_guess = np.zeros((Td-L+1, 1))   # (301,1)
@@ -331,11 +336,11 @@ if __name__ == '__main__':
                  [0.4, 0.0, 0.93, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                  [0.5, 0.0, 0.95, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                  [0.5, 0.0, 0.97, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                 [0.7, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                 [0.8, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                 [0.9, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                 [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 
-                 [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                 [0.6, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                 [0.6, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                 [0.7, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                 [0,8, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                 [0,9, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                  [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                  [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                  [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -394,20 +399,30 @@ if __name__ == '__main__':
         # print('deepc y \n',deepc_y_.shape)
         # print('deepc_g \n',deepc_g_.shape)
 
-        # # save results
-        # u_c.append(deepc_u_[0, :])
-        # t_c.append(t0)
-        # x_c.append(current_state)
-        # x_states.append(deepc_y_)
-        # ## the localization system
-        # t0, current_state, opt_commands, next_states = deepc_obj.model_based_movement(current_state, deepc_u_[0, :], t0, deepc_u_, deepc_y_) # return t0+self.Ts, x_next, next_cmd_, next_s_
-        # # next_trajectories = deepc_obj.vertical_trajectory(current_state)
-        # # print(next_states)
-        # next_trajectories = deepc_obj.circle_trajectory(current_state, deepc_iter)
-        # traj_c.append(next_trajectories[1])
-        # # print(next_trajectories[:3])
-        # # print('current {}'.format(current_state))
-        # # print('control {}'.format(deepc_u_[0]))
-        # deepc_iter += 1
+       # save results
+        u_c.append(deepc_u_[0, :])
+        t_c.append(t0)
+        x_c.append(current_state)
+        x_states.append(deepc_y_)
+        ## the localization system
+        t0, current_state, opt_commands, next_states = deepc_obj.model_based_movement(current_state, deepc_u_[0, :], ext_forces, t0, deepc_u_, deepc_y_) # return t0+self.Ts, x_next, next_cmd_, next_s_
+        # next_trajectories = deepc_obj.vertical_trajectory(current_state)
+        # print(next_states)
+        next_trajectories = deepc_obj.circle_trajectory(current_state, deepc_iter)
+        traj_c.append(next_trajectories[1])
+        # print(next_trajectories[:3])
+        # print('current {}'.format(current_state))
+        # print('control {}'.format(deepc_u_[0]))
+        deepc_iter += 1
 
+    #print((time.time() - start_time)/deepc_iter)
+    print('the average time for casadi-solver\n',np.array(index_time).mean())
+    #print('max iter time {}'.format(np.max(index_time)))
+    traj_s = np.array(x_c)
+    traj_d = np.array(traj_c)
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    ax.plot(traj_s[:, 0], traj_s[:, 1], traj_s[:, 2], 'b')  # traj_s列1为x,xyz轴输入和颜色
+    ax.plot(traj_d[:, 0], traj_d[:, 1], traj_d[:, 2], 'r')
+    plt.show()
  

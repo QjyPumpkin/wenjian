@@ -6,11 +6,12 @@ import casadi.tools as ca_tools
 import time as time
 from datetime import datetime
 from scipy import linalg
+from data_collection import handle_data
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-class handle_data:
+class handle_deepc_data:
     def __init__(self, state_dim=9, dt=0.1, N=25):
         self.Ts = dt
         self.horizon = N
@@ -142,9 +143,10 @@ class handle_data:
         #     x_next_ = self.RK_4(X[:, i], U[:, i], F_ext)
 
         # r(g)
-        # r_g = []
-        # lambda_g = 500
-        # r_g = lambda_g*ca.norm_2(G-G_ref)
+        r_g = []
+        lambda_g = 500
+        r_g = lambda_g*ca.norm_2(G-G_ref)
+        obj = obj + r_g
 
 
         # constraints g
@@ -230,7 +232,7 @@ class handle_data:
     def model_based_movement(self, state, control, ext_F, t0, u_, x_):
         # print('state at t {0} is {1}'.format(t0, state))
         # print('control at t {0} is {1}'.format(t0, control))
-        k1 = self.dyn_np_function(state, control, ext_F)
+        k1 = self.dyn_np_function(state, control, ext_F)    
         k2 = self.dyn_np_function(state+self.Ts/2.0*k1.T, control, ext_F)
         k3 = self.dyn_np_function(state+self.Ts/2.0*k2.T, control, ext_F)
         k4 = self.dyn_np_function(state+self.Ts*k3.T, control, ext_F)
@@ -274,7 +276,7 @@ if __name__ == '__main__':
     p = 3 # number of output = c.shape[0]L = 83  # Td>=(m+1)L-1
     dt = 0.1
     N = Tf
-    deepc_obj = handle_data(state_dim=n_states, dt=dt, N=N)
+    deepc_obj = handle_deepc_data(state_dim=n_states, dt=dt, N=N)
     # initial_control = np.zeros((Tini, n_controls))   # (6,3)
     # initial_states = np.zeros((Tini, n_states))      # (6,9)
     initial_states = np.array([0.0]*n_states*Tini)      # (1,9)
@@ -298,7 +300,7 @@ if __name__ == '__main__':
     ## controls to Hankel
     saved_u = np.load('../Data_MPC/MPC_controls.npy', allow_pickle= True)
     # print('saved controls \n', saved_u)
-    DeePC = handle_data()
+    DeePC = handle_deepc_data()
     H_u = np.zeros((Tini + Tf, Td-L+1, saved_u.shape[1]))
     for i in range(Td):
         H_u = DeePC.hankel(saved_u[:], L, Td-L+1)
@@ -418,9 +420,19 @@ if __name__ == '__main__':
         deepc_u_ = estimated_opt[:int(n_controls*(N-1))].reshape(N-1, n_controls)   # (24,3)
         deepc_y_ = estimated_opt[int(n_controls*(N-1)):int(n_controls*(N-1)+n_states*N)].reshape(N, n_states)     # (24,9)
         deepc_g_ = estimated_opt[int(n_controls*(N-1)+n_states*N):].reshape(Td-L+1, 1)   # G shape?    # (301,1)
-        print('deepc u \n',deepc_u_)
-        print('deepc y \n',deepc_y_)
-        print('deepc_g \n',deepc_g_)
+        print('deepc u \n',deepc_u_.shape)
+        print('deepc y \n',deepc_y_.shape)
+        print('deepc_g \n',deepc_g_.shape)
+        
+        # # data collection for saving calculation time
+        # data_save = handle_data()
+        # data_save.get_dmoc_x_u(
+        #     opt_x=deepc_y_,opt_u=deepc_u_, Tn=t_save, N=N) 
+        # # data_save.get_target_trajectory(target_trajectory=np.concatenate((x_c,traj_d),axis=1)) 
+        # data_save.save_loaded_u(
+        #     file_name = '../Data_MPC/deepc_u.npy')
+        # data_save.save_loaded_x(
+        #     file_name = '../Data_MPC/deepc_y.npy')
 
         # save results
         u_save.append(deepc_u_[0, :])
@@ -429,7 +441,7 @@ if __name__ == '__main__':
         y_save.append(deepc_y_)
         ## the localization system
         ext_forces = np.array([0.0, 0.0, -0.1]).reshape(-1, 1)
-        t0, current_state, opt_commands, next_states = deepc_obj.model_based_movement(current_state, deepc_u_[0, :], ext_forces, t0, deepc_u_, deepc_y_) # return t0+self.Ts, x_next, next_cmd_, next_s_
+        t0, current_state, opt_commands, next_states = deepc_obj.model_based_movement(current_state[:9], deepc_u_[0, :], ext_forces, t0, deepc_u_, deepc_y_) # return t0+self.Ts, x_next, next_cmd_, next_s_
         # next_trajectories = deepc_obj.vertical_trajectory(current_state)
         # print(next_states)
         next_trajectories = deepc_obj.circle_trajectory(current_state, deepc_iter)

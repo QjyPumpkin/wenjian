@@ -27,6 +27,11 @@ class handle_data:
         thrust_ref_ = ca.SX.sym('thrust_ref_')  # z向推力
         controls_ = ca.vertcat(*[roll_ref_, pitch_ref_, thrust_ref_])
         num_controls = controls_.size()[0]
+        ## control relevant parameters
+        self.roll_tau = 0.257
+        self.roll_gain = 0.75
+        self.pitch_tau = 0.259
+        self.pitch_gain = 0.78
 
         # model states
         x_ = ca.SX.sym('x_')
@@ -100,7 +105,7 @@ class handle_data:
         U_f = ca.SX.sym('U_f', num_controls*(Tf-1), Td-L+1)  # (3*24,301)
         Y_p = ca.SX.sym('Y_p', num_states*Tini, Td-L+1)  # (9*6,301)
         Y_f = ca.SX.sym('Y_f', num_states*Tf, Td-L+1)  # (9*25,301)
-        U2Y = ca.vertcat(Y_f, U_p, U_f)  # (18+75+225,301)
+        U2Y = ca.vertcat(Y_f, U_p, U_f)  # (225+18+72=315,301)
         print("U2Y shape : \n", U2Y.shape)
 
         # constraints and cost
@@ -131,7 +136,7 @@ class handle_data:
         # print("Yp shape is \n", Y_p.shape)
         # g_norm = np.linalg.norm(Yp_flat@G-y_ini, ord=2)**2  
         g_norm = ca.norm_2(ca.mtimes([Y_p,G])-ca.reshape(y_ini, (-1, 1)))**2   # G from Yp
-        # print("g_norm shape is \n", g_norm.shape)
+        print("g_norm shape is \n", g_norm.shape)
         obj = obj + lambda_s*g_norm
         # for i in range(self.horizon-1):
         #     x_next_ = self.RK_4(X[:, i], U[:, i], F_ext)
@@ -150,7 +155,7 @@ class handle_data:
         # for i in range(self.horizon-1):  # first Y_next_ read from the first row from saved Y_f file 
             # Y_next_ = ca.mtimes(Y_f[:, i], G) # Y_next_ computed: y = Y_f*G
         U2Y_sx = ca.mtimes(U2Y, G) # convert U2Y to casadi SX variable (,1)
-        # print("U2Y_sx shape is \n", U2Y_sx.shape)
+        print("U2Y_sx shape is \n", U2Y_sx.shape)
         g.append(U2Y_sx - variables)    # shape missmatch
         # print("g is:", g)
         
@@ -158,14 +163,14 @@ class handle_data:
         opt_variables = ca.vertcat(ca.reshape(U, -1, 1), ca.reshape(Y, -1, 1), ca.reshape(G, -1, 1))
         opt_params = ca.vertcat(ca.reshape(U_ref, -1, 1), ca.reshape(Y_ref, -1, 1), ca.reshape(u_ini, -1, 1), ca.reshape(y_ini, -1, 1), ca.reshape(U_p, -1, 1),ca.reshape(U_f, -1, 1), ca.reshape(Y_p, -1, 1), ca.reshape(Y_f, -1, 1) )
         nlp_prob = {'f': obj, 'x':opt_variables, 'p':opt_params,'g':ca.vertcat(*g)}
-        opts_setting = {'ipopt.max_iter':200, 'ipopt.print_level':1, 'print_time':0, 'ipopt.acceptable_tol':1e-8, 'ipopt.acceptable_obj_change_tol':1e-6, 'ipopt.warm_start_init_point':'no'}
+        opts_setting = {'ipopt.max_iter':300, 'ipopt.print_level':3, 'print_time':0, 'ipopt.acceptable_tol':1e-8, 'ipopt.acceptable_obj_change_tol':1e-6, 'ipopt.warm_start_init_point':'no'}
 
         self.solver = ca.nlpsol('solver', 'ipopt', nlp_prob, opts_setting)
 
         # ##### following only for test
         # ## define constraints
-        # lbg = 0.0
-        # ubg = 0.0
+        # lbg = np.zeros((301, 1))
+        # ubg = np.zeros((301, 1))
         # lbx = []
         # ubx = []
         # for _ in range(self.horizon-1):
@@ -174,16 +179,19 @@ class handle_data:
         # for _ in range(self.horizon):
         #     lbx = lbx + [-np.inf]*state_dim
         #     ubx = ubx + [np.inf]*state_dim
+        # for _ in range(self.horizon):
+        #     lbx = lbx + [-np.inf]*301
+        #     ubx = ubx + [np.inf]*301
         # u0 = np.zeros((self.horizon-1, num_controls))
         # y0 = np.zeros((self.horizon, num_states))
-        # g0 = np.zeros((self.horizon-1, 1))
+        # g0 = np.zeros((301, 1))
         # init_control = ca.vertcat(u0.reshape(-1, 1), y0.reshape(-1, 1), g0.reshape(-1, 1))
-        # c_p = ca.vertcat(U_ref.reshape(-1, 1), Y_ref.reshape(-1, 1), u_ini.reshape(-1, 1), y_ini.reshape(-1, 1), U2Y.reshape(-1, 1))
+        # c_p = ca.vertcat(U_ref.reshape(-1, 1), Y_ref.reshape(-1, 1), u_ini.reshape(-1, 1), y_ini.reshape(-1, 1), (U_p.reshape(-1, num_controls)).reshape(-1, 1), (U_f.reshape(-1, num_controls)).reshape(-1, 1), (Y_p.reshape(-1, num_states)).reshape(-1, 1), (Y_f.reshape(-1, num_states)).reshape(-1, 1))
         # res = self.solver(x0=init_control, p=c_p, lbg=lbg, ubg=ubg, lbx=lbx, ubx=ubx)
         # estimated_opt = res['x'].full()
         # u1 = estimated_opt[:int(num_controls*(self.horizon-1))].reshape(self.horizon-1, num_controls)
-        # y1 = estimated_opt[int(num_controls*(self.horizon-1)):int(num_states*(self.horizon-1))].reshape(self.horizon, num_states)
-        # g1 = estimated_opt[int(num_states*(self.horizon-1)):].reshape(self.horizon, 1)
+        # y1 = estimated_opt[int(num_controls*(self.horizon-1)):int(num_controls*(self.horizon-1)+num_states*(self.horizon))].reshape(self.horizon, num_states)
+        # g1 = estimated_opt[int(num_controls*(self.horizon-1)+num_states*(self.horizon)):].reshape(301, 1)
         # print("u1: \n", u1)
         # print("y1: \n", y1)
         # print("g1: \n", g1)
@@ -202,15 +210,22 @@ class handle_data:
             H = H.T
         return H
 
-    def RK_4(self, s_t_, c_, f_):
-        # discretize Runge Kutta 4
-        k1 = self.dyn_function(s_t_, c_, f_)
-        k2 = self.dyn_function(s_t_+self.Ts/2.0*k1, c_, f_)
-        k3 = self.dyn_function(s_t_+self.Ts/2.0*k2, c_, f_)
-        k4 = self.dyn_function(s_t_+self.Ts*k3, c_, f_)
-        result_ = s_t_ + self.Ts/6.0*(k1 + 2.0*k2 + 2.0*k3 + k4)
-        #print('result_rk4',result_)
-        return result_
+    
+    def dyn_np_function(self, states, controls, ext_f):
+        euler = states[6:]
+        roll_ref = controls[0]
+        pitch_ref = controls[1]
+        thrust = controls[2]
+        # dynamic of the system
+        rhs = states[3:6]
+        rhs = np.concatenate((rhs, (np.cos(euler[0])*np.cos(euler[2])*np.sin(euler[1]) + np.sin(euler[0])*np.sin(euler[2]))*thrust+ ext_f[0]))
+        rhs = np.concatenate((rhs, (np.cos(euler[0])*np.sin(euler[1])*np.sin(euler[2]) - np.cos(euler[2])*np.sin(euler[0]))*thrust + ext_f[1]))
+        rhs = np.concatenate((rhs,  -self.g_ + np.cos(euler[1])*np.cos(euler[0])*thrust + ext_f[2]))
+        rhs = np.concatenate((rhs, np.array([(self.roll_gain*roll_ref- euler[0])/self.roll_tau])))
+        rhs = np.concatenate((rhs, np.array([(self.pitch_gain*pitch_ref - euler[1])/self.pitch_tau])))
+        rhs = np.concatenate((rhs,  np.array([0.0])))
+        # rhs is in (1, X) shape
+        return rhs
 
     def model_based_movement(self, state, control, ext_F, t0, u_, x_):
         # print('state at t {0} is {1}'.format(t0, state))
@@ -229,7 +244,7 @@ class handle_data:
         return t0+self.Ts, x_next, next_cmd_, next_s_
     
     def vertical_trajectory(self, current_state,):
-        if current_state[2] >= self.trajectory[0, 2]:  #第三列数值大于等于第一行第三列预计轨迹时前移，直至轨迹终点
+        if current_state[2] >= self.trajectory[0, 2]:  #第三列数值大于等于第一行第三列预计轨迹时前移,直至轨迹终点
             self.trajectory = np.concatenate((current_state.reshape(1, -1), self.trajectory[2:], self.trajectory[-1:]))
         return self.trajectory
 
@@ -260,24 +275,28 @@ if __name__ == '__main__':
     dt = 0.1
     N = Tf
     deepc_obj = handle_data(state_dim=n_states, dt=dt, N=N)
-    initial_control = np.zeros((Tini, n_controls))   # (6,3)
-    initial_states = np.zeros((Tini, n_states))      # (6,9)
-    init_state = np.array([0.0]*n_states)      # (1,9)
+    # initial_control = np.zeros((Tini, n_controls))   # (6,3)
+    # initial_states = np.zeros((Tini, n_states))      # (6,9)
+    initial_states = np.array([0.0]*n_states*Tini)      # (1,9)
+    initial_control = np.array([0.0]*n_controls*Tini)
     # print("init_state shape is: \n", init_state.shape)
-    current_state = init_state.copy()          # (1,9)
-    opt_commands = np.zeros((n_controls, Tf))   # (3,24)
-    next_states = np.zeros((n_states, Tf))   # (9,25)
-    G_guess = np.zeros((Td-L+1, 1))   # (301,1)
+    current_state = initial_states.copy()          # (1,9) or (6*9)
+    opt_commands = np.zeros((N-1, n_controls))   # (24,3)
+    next_states = np.zeros((N, n_states))   # (25,9)
+    # G_guess = np.zeros((Td-L+1, 1))   # (301,1)
+    G_guess = np.array([0.0]*(Td-L+1))
     control_ref = np.zeros((n_controls, Tf-1))   # (3,24)
+    # control_ref = np.array([0.0]*n_controls*(Tf-1))
+    print('first stage proofed - object generated')
     for i in range(Tf-1):
         control_ref[2,i] = 9.8066
+    control_ref = control_ref.reshape(-1, 1)
     # control_ref = np.zeros(((N-1)*n_controls, Td-L+1))
     
-    print('first stage proofed - object generated')
 
     # Hankel Matrix
     ## controls to Hankel
-    saved_u = np.load('MPC_controls.npy', allow_pickle= True)
+    saved_u = np.load('../Data_MPC/MPC_controls.npy', allow_pickle= True)
     # print('saved controls \n', saved_u)
     DeePC = handle_data()
     H_u = np.zeros((Tini + Tf, Td-L+1, saved_u.shape[1]))
@@ -287,14 +306,12 @@ if __name__ == '__main__':
     # print("Hankel_u's shape is:", H_u.shape)
 
     ## states to Hankel
-    saved_y = np.load('MPC_states.npy', allow_pickle= True)
+    saved_y = np.load('../Data_MPC/MPC_states.npy', allow_pickle= True)
     H_y = np.zeros((Tini + Tf, Td-L+1, saved_y.shape[1])) 
     for i in range(Td):
         H_y = DeePC.hankel(saved_y[:], L, Td-L+1)
     # print('saved states \n', saved_y)
     # print("Hankel_y's shape is:", H_y.shape)
-
-    print('loaded the hankel matrix')
 
     ## data collection for state and controls
     ### divide HM into two parts: past and future
@@ -322,41 +339,43 @@ if __name__ == '__main__':
     # print("yini is", y_ini)
 
     # set initial trajectory
-
     init_trajectory = np.array(
-            [[0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.4, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.1, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.1, 0.0, 0.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.1, 0.0, 0.69, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.2, 0.0, 0.73, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.2, 0.0, 0.76, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.2, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.2, 0.0, 0.83, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.2, 0.0, 0.85, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.3, 0.0, 0.88, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.3, 0.0, 0.91, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.4, 0.0, 0.93, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.5, 0.0, 0.95, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.5, 0.0, 0.97, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.7, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.8, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.9, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-            ])
-
-    deepc_obj.trajectory = init_trajectory.copy()
-    next_trajectory = init_trajectory.copy()
+        [[0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.1, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.1, 0.0, 0.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.1, 0.0, 0.69, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.2, 0.0, 0.73, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.2, 0.0, 0.76, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.2, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.2, 0.0, 0.83, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.2, 0.0, 0.85, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.3, 0.0, 0.88, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.3, 0.0, 0.91, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.4, 0.0, 0.93, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.5, 0.0, 0.95, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.5, 0.0, 0.97, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.7, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.8, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.9, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        ])
     
+    deepc_obj.trajectory = init_trajectory
+    # print("deepc traj", deepc_obj.trajectory)
+    next_trajectory = init_trajectory
+
+
     ## set lb and ub
-    lbg = np.zeros((Td-L+1, 1))   # (301,1)
-    ubg = np.zeros((Td-L+1, 1))
+    n_g = n_states*Tf+n_controls*(Tini+Tf-1)
+    lbg = np.zeros((n_g, 1))   # (315,1)
+    ubg = np.zeros((n_g, 1))
     lbx = []
     ubx = []
     for _ in range(N-1):  # np.deg2rad is x*pi/180
@@ -372,9 +391,9 @@ if __name__ == '__main__':
     # for saving data
     t0 = 0
     x_c = []
-    u_c = []
-    t_c = []
-    x_states = []
+    u_save = []
+    t_save = []
+    y_save = []
     traj_c = []
 
     # start DeePC
@@ -384,7 +403,7 @@ if __name__ == '__main__':
     start_time = time.time()
 
     while(deepc_iter < 1):
-        ## set parameters
+        ## set parameters  trajectory has float form,overloaded
         control_params = ca.vertcat(control_ref.reshape(-1, 1), deepc_obj.trajectory.reshape(-1, 1), initial_control.reshape(-1, 1), initial_states.reshape(-1, 1), U_p.reshape(-1, 1), U_f.reshape(-1, 1), Y_p.reshape(-1, 1), Y_f.reshape(-1, 1))
         ## initial guess of the optimization targets
         init_control = ca.vertcat(opt_commands.reshape(-1, 1), next_states.reshape(-1, 1), G_guess.reshape(-1, 1))
@@ -396,19 +415,20 @@ if __name__ == '__main__':
         estimated_opt = sol['x'].full()
         # y_opt = estimated_opt(1)   # reshape
         # g_opt = estimated_opt(3)
-        deepc_u_ = estimated_opt[:int(n_controls*(N-1))].reshape(n_controls, N-1)   # (24,3)
-        deepc_y_ = estimated_opt[int(n_controls*(N-1)):int(n_controls*(N-1)+n_states*N)].reshape(n_states, N)     # (24,9)
+        deepc_u_ = estimated_opt[:int(n_controls*(N-1))].reshape(N-1, n_controls)   # (24,3)
+        deepc_y_ = estimated_opt[int(n_controls*(N-1)):int(n_controls*(N-1)+n_states*N)].reshape(N, n_states)     # (24,9)
         deepc_g_ = estimated_opt[int(n_controls*(N-1)+n_states*N):].reshape(Td-L+1, 1)   # G shape?    # (301,1)
-        # print('deepc u \n',deepc_u_.shape)
-        # print('deepc y \n',deepc_y_.shape)
-        # print('deepc_g \n',deepc_g_.shape)
+        print('deepc u \n',deepc_u_)
+        print('deepc y \n',deepc_y_)
+        print('deepc_g \n',deepc_g_)
 
-       # save results
-        u_c.append(deepc_u_[0, :])
-        t_c.append(t0)
+        # save results
+        u_save.append(deepc_u_[0, :])
+        t_save.append(t0)
         x_c.append(current_state)
-        x_states.append(deepc_y_)
+        y_save.append(deepc_y_)
         ## the localization system
+        ext_forces = np.array([0.0, 0.0, -0.1]).reshape(-1, 1)
         t0, current_state, opt_commands, next_states = deepc_obj.model_based_movement(current_state, deepc_u_[0, :], ext_forces, t0, deepc_u_, deepc_y_) # return t0+self.Ts, x_next, next_cmd_, next_s_
         # next_trajectories = deepc_obj.vertical_trajectory(current_state)
         # print(next_states)
@@ -422,11 +442,12 @@ if __name__ == '__main__':
     #print((time.time() - start_time)/deepc_iter)
     print('the average time for casadi-solver\n',np.array(index_time).mean())
     #print('max iter time {}'.format(np.max(index_time)))
-    traj_s = np.array(x_c)
-    traj_d = np.array(traj_c)
+    traj_s = np.array(x_c)   # current from saved traj
+    traj_d = np.array(traj_c)  # next calculated traj
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     ax.plot(traj_s[:, 0], traj_s[:, 1], traj_s[:, 2], 'b')  # traj_s列1为x,xyz轴输入和颜色
     ax.plot(traj_d[:, 0], traj_d[:, 1], traj_d[:, 2], 'r')
     plt.show()
+
  

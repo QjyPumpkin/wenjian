@@ -142,11 +142,27 @@ class handle_deepc_data:
         # for i in range(self.horizon-1):
         #     x_next_ = self.RK_4(X[:, i], U[:, i], F_ext)
 
-        # r(g)
-        r_g = []
-        lambda_g = 500
-        r_g = lambda_g*ca.norm_2(G-G_ref)
-        obj = obj + r_g
+        # # r(g)
+        # r_g = []
+        # lambda_g = 500
+        # stacked_ur_Tini = ca.repmat(U_ref, 1, Tini)
+        # stacked_yr_Tini = ca.repmat(Y_ref, 1, Tini)
+        # stacked_ur_Tf = ca.repmat(U_ref, 1, Tf)
+        # stacked_yr_Tf = ca.repmat(Y_ref, 1, Tf)
+        # stacked = ca.vertcat(
+        #     ca.reshape(stacked_yr_Tini, -1, 1),    # Tini & Y_ref
+        #     ca.reshape(stacked_yr_Tf, -1, 1),      # Tf & Y_ref
+        #     ca.reshape(stacked_ur_Tini, -1, 1),    # Tini & U_ref
+        #     ca.reshape(stacked_ur_Tf, -1, 1)       # Tf & U_ref
+        #     )
+        # print("stacked shape:", stacked.shape)
+        # combined = ca.vertcat(Y_p, Y_f, U_p, U_f)
+        # print("combined UY shape:", combined.shape)
+        # combined_inv = ca.pinv(combined)
+        # print("combined inv shape:", combined_inv.shape)
+        # G_ref = ca.mtimes(combined_inv, stacked)
+        # r_g = lambda_g*ca.norm_2(G-G_ref)
+        # obj = obj + r_g
 
 
         # constraints g

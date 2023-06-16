@@ -49,7 +49,7 @@ class handle_deepc_data:
         num_states = states_.size()[0]
         # print("num_states is:", num_states)
 
-        # Vertical trajectory in z-direction
+        # Vertical trajectory in z-direction (25,9)
         self.trajectory = np.array(
                 [
                 [0.0, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -106,7 +106,13 @@ class handle_deepc_data:
         U_f = ca.SX.sym('U_f', num_controls*(Tf-1), Td-L+1)  # (3*24,301)
         Y_p = ca.SX.sym('Y_p', num_states*Tini, Td-L+1)  # (9*6,301)
         Y_f = ca.SX.sym('Y_f', num_states*Tf, Td-L+1)  # (9*25,301)
-        U2Y = ca.vertcat(Y_f, U_p, U_f)  # (225+18+72=315,301)
+        # U_p = ca.SX.sym('U_p', Td-L+1, num_controls*Tini)  # (301,18)
+        # U_f = ca.SX.sym('U_f', Td-L+1, num_controls*(Tf-1))  # (301,72)
+        # Y_p = ca.SX.sym('Y_p', Td-L+1, num_states*Tini)  # (301,54)
+        # Y_f = ca.SX.sym('Y_f', Td-L+1, num_states*Tf)  # (301,225)
+
+        U2Y = ca.vertcat(Y_f, U_p, U_f)  # (225+18+72=315,301) /(301,315)
+        # U2Y = ca.vertcat(Y_f.T, U_p.T, U_f.T)
         print("U2Y shape : \n", U2Y.shape)
 
         # constraints and cost
@@ -135,35 +141,48 @@ class handle_deepc_data:
         lambda_s = 7.5e8
         print("G shape is \n", G.shape)
         # print("Yp shape is \n", Y_p.shape)
-        # g_norm = np.linalg.norm(Yp_flat@G-y_ini, ord=2)**2  
         g_norm = ca.norm_2(ca.mtimes([Y_p,G])-ca.reshape(y_ini, (-1, 1)))**2   # G from Yp
         print("g_norm shape is \n", g_norm.shape)
         obj = obj + lambda_s*g_norm
         # for i in range(self.horizon-1):
         #     x_next_ = self.RK_4(X[:, i], U[:, i], F_ext)
 
-        # # r(g)
-        # r_g = []
-        # lambda_g = 500
-        # stacked_ur_Tini = ca.repmat(U_ref, 1, Tini)
-        # stacked_yr_Tini = ca.repmat(Y_ref, 1, Tini)
-        # stacked_ur_Tf = ca.repmat(U_ref, 1, Tf)
-        # stacked_yr_Tf = ca.repmat(Y_ref, 1, Tf)
-        # stacked = ca.vertcat(
-        #     ca.reshape(stacked_yr_Tini, -1, 1),    # Tini & Y_ref
-        #     ca.reshape(stacked_yr_Tf, -1, 1),      # Tf & Y_ref
-        #     ca.reshape(stacked_ur_Tini, -1, 1),    # Tini & U_ref
-        #     ca.reshape(stacked_ur_Tf, -1, 1)       # Tf & U_ref
-        #     )
-        # print("stacked shape:", stacked.shape)
-        # combined = ca.vertcat(Y_p, Y_f, U_p, U_f)
-        # print("combined UY shape:", combined.shape)
-        # combined_inv = ca.pinv(combined)
-        # print("combined inv shape:", combined_inv.shape)
-        # G_ref = ca.mtimes(combined_inv, stacked)
-        # r_g = lambda_g*ca.norm_2(G-G_ref)
-        # obj = obj + r_g
+        # r(g)
+        r_g = []
+        lambda_g = 500
+        stacked_ur_Tini = ca.repmat(U_ref[1,:], 1, Tini)
+        stacked_yr_Tini = ca.repmat(Y_ref[24,:], 1, Tini)
+        stacked_ur_Tf = ca.repmat(U_ref[1,:], 1, Tf-1)
+        stacked_yr_Tf = ca.repmat(Y_ref[24,:], 1, Tf)
+        print("stacked1 shape:", stacked_ur_Tini.shape)
+        print("stacked2 shape:", stacked_yr_Tini.shape)
+        print("stacked3 shape:", stacked_ur_Tf.shape)
+        print("stacked4 shape:", stacked_yr_Tf.shape)
+        stacked = ca.vertcat(
+            ca.reshape(stacked_yr_Tini, -1, 1),    # Tini & Y_ref
+            ca.reshape(stacked_yr_Tf, -1, 1),      # Tf & Y_ref
+            ca.reshape(stacked_ur_Tini, -1, 1),    # Tini & U_ref
+            ca.reshape(stacked_ur_Tf, -1, 1)       # Tf & U_ref
+            )
+        print("stacked shape:", stacked.shape)
+        combined = ca.vertcat(Y_p, Y_f, U_p, U_f)   #(369,301)
+        print("combined UY shape:", combined.shape)
 
+        start_time = time.time()
+        combined_inv = ca.pinv(combined)    # (301,369)
+        print("combined inv shape:", combined_inv.shape)
+        end_time = time.time()
+        print('time for inverse \n', end_time-start_time)
+        t_ = time.time()
+        G_ref = ca.mtimes(combined_inv, stacked)
+        print("G_ref shape:", G_ref.shape)
+        end_time = time.time()
+        print('time for multi \n', end_time-t_)
+        t_ = time.time()
+        r_g = lambda_g*ca.norm_2(G-G_ref)
+        print("r(g) shape:", r_g.shape)
+        end_time = time.time()
+        print('time for multi \n', end_time-t_)
 
         # constraints g
         g = []
@@ -181,7 +200,7 @@ class handle_deepc_data:
         opt_variables = ca.vertcat(ca.reshape(U, -1, 1), ca.reshape(Y, -1, 1), ca.reshape(G, -1, 1))
         opt_params = ca.vertcat(ca.reshape(U_ref, -1, 1), ca.reshape(Y_ref, -1, 1), ca.reshape(u_ini, -1, 1), ca.reshape(y_ini, -1, 1), ca.reshape(U_p, -1, 1),ca.reshape(U_f, -1, 1), ca.reshape(Y_p, -1, 1), ca.reshape(Y_f, -1, 1) )
         nlp_prob = {'f': obj, 'x':opt_variables, 'p':opt_params,'g':ca.vertcat(*g)}
-        opts_setting = {'ipopt.max_iter':300, 'ipopt.print_level':3, 'print_time':0, 'ipopt.acceptable_tol':1e-8, 'ipopt.acceptable_obj_change_tol':1e-6, 'ipopt.warm_start_init_point':'no'}
+        opts_setting = {'ipopt.max_iter':200, 'ipopt.print_level':3, 'print_time':0, 'ipopt.acceptable_tol':1e-8, 'ipopt.acceptable_obj_change_tol':1e-6, 'ipopt.warm_start_init_point':'no'}
 
         self.solver = ca.nlpsol('solver', 'ipopt', nlp_prob, opts_setting)
 
@@ -467,7 +486,7 @@ if __name__ == '__main__':
         # print('control {}'.format(deepc_u_[0]))
         deepc_iter += 1
 
-    #print((time.time() - start_time)/deepc_iter)
+    print((time.time() - start_time)/deepc_iter)
     print('the average time for casadi-solver\n',np.array(index_time).mean())
     #print('max iter time {}'.format(np.max(index_time)))
     traj_s = np.array(x_c)   # current from saved traj

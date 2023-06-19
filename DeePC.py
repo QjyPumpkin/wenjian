@@ -246,6 +246,18 @@ class handle_deepc_data:
         if ij.shape[1] == 1:  # preserve shape for a single row
             H = H.T
         return H
+    
+    def matrix(self,data):
+    # reshape Hankel Matrix to the right form 
+        B = []  # e.g. U_p(6,301,3) --> (6*3, 301)
+        C = []
+        num_rows = data.shape[0] * data.shape[2]
+        num_cols = data.shape[1]
+        
+        # Reshape the data to (num_rows, num_cols)
+        B = data.transpose(0, 2, 1)
+        C = B.reshape((num_rows, num_cols))
+        return C
 
     
     def dyn_np_function(self, states, controls, ext_f):
@@ -367,13 +379,12 @@ if __name__ == '__main__':
     # print("Y_p \n", Y_p.shape)
     # print("Y_f \n", Y_f.shape)
 
-    # initial condition = Tini most recent past but simulate for the first step
-    # u_ini = [0.0, 0.0, 9.8066]
-    # u_ini = U_p[:, 0, :]  # shape [6,3]
-    # print("uini is", u_ini)
-    # y_ini = [-0.5, -0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
-    # y_ini = Y_p[:, 0, :].reshape((6,1,9))  # shape[]
-    # print("yini is", y_ini)
+    U_p = deepc_obj.matrix(U_p)
+    U_f = deepc_obj.matrix(U_f)
+    Y_p = deepc_obj.matrix(Y_p)
+    Y_f = deepc_obj.matrix(Y_f)
+    # print("Y_p \n", Y_p.shape)
+    # print("Y_f \n", Y_f.shape)
 
     # set initial trajectory
     init_trajectory = np.array(

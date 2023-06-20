@@ -106,10 +106,6 @@ class handle_deepc_data:
         U_f = ca.SX.sym('U_f', num_controls*(Tf-1), Td-L+1)  # (3*24,301)
         Y_p = ca.SX.sym('Y_p', num_states*Tini, Td-L+1)  # (9*6,301)
         Y_f = ca.SX.sym('Y_f', num_states*Tf, Td-L+1)  # (9*25,301)
-        # U_p = ca.SX.sym('U_p', Td-L+1, num_controls*Tini)  # (301,18)
-        # U_f = ca.SX.sym('U_f', Td-L+1, num_controls*(Tf-1))  # (301,72)
-        # Y_p = ca.SX.sym('Y_p', Td-L+1, num_states*Tini)  # (301,54)
-        # Y_f = ca.SX.sym('Y_f', Td-L+1, num_states*Tf)  # (301,225)
 
         U2Y = ca.vertcat(Y_f, U_p, U_f)  # (225+18+72=315,301) /(301,315)
         # U2Y = ca.vertcat(Y_f.T, U_p.T, U_f.T)
@@ -150,11 +146,11 @@ class handle_deepc_data:
         # r(g)
         r_g = []
         lambda_g = 500
-        stacked_ur_Tini = ca.repmat(U_ref[1,:], 1, Tini)
-        stacked_yr_Tini = ca.repmat(Y_ref[24,:], 1, Tini)
-        stacked_ur_Tf = ca.repmat(U_ref[1,:], 1, Tf-1)
-        stacked_yr_Tf = ca.repmat(Y_ref[24,:], 1, Tf)
-        print("stacked1 shape:", stacked_ur_Tini.shape)
+        stacked_ur_Tini = ca.repmat(U_ref[:,1], 1, Tini)
+        stacked_yr_Tini = ca.repmat(Y_ref[:, 24], 1, Tini)
+        stacked_ur_Tf = ca.repmat(U_ref[:,1], 1, Tf-1)
+        stacked_yr_Tf = ca.repmat(Y_ref[:, 24], 1, Tf)
+        print("stacked1 shape:", stacked_ur_Tini)
         print("stacked2 shape:", stacked_yr_Tini.shape)
         print("stacked3 shape:", stacked_ur_Tf.shape)
         print("stacked4 shape:", stacked_yr_Tf.shape)
@@ -164,25 +160,25 @@ class handle_deepc_data:
             ca.reshape(stacked_ur_Tini, -1, 1),    # Tini & U_ref
             ca.reshape(stacked_ur_Tf, -1, 1)       # Tf & U_ref
             )
-        print("stacked shape:", stacked.shape)
+        # print("stacked shape:", stacked.shape)
         combined = ca.vertcat(Y_p, Y_f, U_p, U_f)   #(369,301)
-        print("combined UY shape:", combined.shape)
+        # print("combined UY shape:", combined.shape)
 
         start_time = time.time()
         combined_inv = ca.pinv(combined)    # (301,369)
-        print("combined inv shape:", combined_inv.shape)
+        # print("combined inv shape:", combined_inv.shape)
         end_time = time.time()
         print('time for inverse \n', end_time-start_time)
         t_ = time.time()
         G_ref = ca.mtimes(combined_inv, stacked)
-        print("G_ref shape:", G_ref.shape)
+        # print("G_ref shape:", G_ref.shape)
         end_time = time.time()
         print('time for multi \n', end_time-t_)
         t_ = time.time()
         r_g = lambda_g*ca.norm_2(G-G_ref)
-        print("r(g) shape:", r_g.shape)
+        # print("r(g) shape:", r_g.shape)
         end_time = time.time()
-        print('time for multi \n', end_time-t_)
+        print('time for multi2 \n', end_time-t_)
 
         # constraints g
         g = []
@@ -383,8 +379,9 @@ if __name__ == '__main__':
     U_f = deepc_obj.matrix(U_f)
     Y_p = deepc_obj.matrix(Y_p)
     Y_f = deepc_obj.matrix(Y_f)
-    # print("Y_p \n", Y_p.shape)
-    # print("Y_f \n", Y_f.shape)
+    print("U_p \n", U_p)
+    print("Y_p \n", Y_p.shape)
+    print("Y_f \n", Y_f.shape)
 
     # set initial trajectory
     init_trajectory = np.array(
@@ -466,19 +463,19 @@ if __name__ == '__main__':
         deepc_u_ = estimated_opt[:int(n_controls*(N-1))].reshape(N-1, n_controls)   # (24,3)
         deepc_y_ = estimated_opt[int(n_controls*(N-1)):int(n_controls*(N-1)+n_states*N)].reshape(N, n_states)     # (24,9)
         deepc_g_ = estimated_opt[int(n_controls*(N-1)+n_states*N):].reshape(Td-L+1, 1)   # G shape?    # (301,1)
-        print('deepc u \n',deepc_u_.shape)
-        print('deepc y \n',deepc_y_.shape)
-        print('deepc_g \n',deepc_g_.shape)
+        print('deepc u \n',deepc_u_)
+        print('deepc y \n',deepc_y_)
+        print('deepc_g \n',deepc_g_)
         
-        # # data collection for saving calculation time
-        # data_save = handle_data()
-        # data_save.get_dmoc_x_u(
-        #     opt_x=deepc_y_,opt_u=deepc_u_, Tn=t_save, N=N) 
-        # # data_save.get_target_trajectory(target_trajectory=np.concatenate((x_c,traj_d),axis=1)) 
-        # data_save.save_loaded_u(
-        #     file_name = '../Data_MPC/deepc_u.npy')
-        # data_save.save_loaded_x(
-        #     file_name = '../Data_MPC/deepc_y.npy')
+        # data collection for saving calculation time
+        data_save = handle_data()
+        data_save.get_dmoc_x_u(
+            opt_x=deepc_y_,opt_u=deepc_u_, Tn=t_save, N=N) 
+        # data_save.get_target_trajectory(target_trajectory=np.concatenate((x_c,traj_d),axis=1)) 
+        data_save.save_loaded_u(
+            file_name = '../Data_MPC/deepc_u.npy')
+        data_save.save_loaded_x(
+            file_name = '../Data_MPC/deepc_y.npy')
 
         # save results
         u_save.append(deepc_u_[0, :])
@@ -496,14 +493,19 @@ if __name__ == '__main__':
         # print('current {}'.format(current_state))
         # print('control {}'.format(deepc_u_[0]))
         deepc_iter += 1
+    fig = plt.axes(projection='3d')
+    ax.plot(deepc_u_[0,:], deepc_u_[1,:], deepc_u_[2,:], 'b')
+    ax.plot(deepc_y_[0,:], deepc_y_[1,:], deepc_y_[2,:], 'r')
+    plot.show()
 
     print((time.time() - start_time)/deepc_iter)
     print('the average time for casadi-solver\n',np.array(index_time).mean())
     #print('max iter time {}'.format(np.max(index_time)))
     traj_s = np.array(x_c)   # current from saved traj
     traj_d = np.array(traj_c)  # next calculated traj
-    fig = plt.figure()
-    ax = fig.gca(projection='3d')
+    # fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    fig = plt.axes(projection='3d')
+    # ax = fig.gca(projection='3d')
     ax.plot(traj_s[:, 0], traj_s[:, 1], traj_s[:, 2], 'b')  # traj_s列1为x,xyz轴输入和颜色
     ax.plot(traj_d[:, 0], traj_d[:, 1], traj_d[:, 2], 'r')
     plt.show()

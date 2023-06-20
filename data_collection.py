@@ -22,6 +22,9 @@ class handle_data(object):
     def get_computation_time(self, t_comp):
         self.computation_time = t_comp
 
+    def get_r_g(self, r_g):
+        self.r_g = r_g
+
     def save_loaded_data(self,file_name):
         with open(file_name,'wb') as f:
         #    np.save(f, self.Tn)
@@ -41,6 +44,10 @@ class handle_data(object):
             np.save(f, self.opt_x)
             print("saving states done")
 
+    def save_cul_r_g(self, file_name):
+        with open(file_name,'wb') as f:
+            np.save(f, self.r_g)
+            print("saving r(g) done")
 
     def load_saved_data(self,file_name): # filename = where to save the data
         with open(file_name, 'rb') as f:
@@ -62,6 +69,11 @@ class handle_data(object):
         with open(file_name, 'rb') as f:
             self.opt_x = np.load(f, allow_pickle=True)
             return opt_x
+
+    def load_r_g(self,file_name):
+        with open(file_name, 'rb') as f:
+            self.r_g = np.load(f, allow_pickle=True)
+            return r_g
             
 
 

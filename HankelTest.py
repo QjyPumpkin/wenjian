@@ -6,8 +6,9 @@ import casadi.tools as ca_tools
 import time as time
 from datetime import datetime
 from scipy import linalg
+from data_collection import handle_data
 
-class handle_data:
+class M_data:
     def __init__(self, state_dim=9, dt=0.1, N=25):
         self.Ts = dt
         self.horizon = N
@@ -26,6 +27,19 @@ class handle_data:
             H = H.T
         return H
 
+    def matrix(self,data):
+    # reshape Hankel Matrix to the right form 
+        B = []  # e.g. U_p(6,301,3) --> (6*3, 301)
+        C = []
+        num_rows = data.shape[0] * data.shape[2]
+        num_cols = data.shape[1]
+        
+        # Reshape the data to (num_rows, num_cols)
+        B = data.transpose(0, 2, 1)
+        C = B.reshape((num_rows, num_cols))
+        return C
+
+
 if __name__ == '__main__':
     Td = 331 # total number of data in Hankel Matrix,data length
     Tf = 25  # Tf = exc_param.Nd  prediction horizon 
@@ -41,7 +55,7 @@ if __name__ == '__main__':
     ## controls to Hankel
     saved_u = np.load('../Data_MPC/MPC_controls.npy', allow_pickle= True)
     # print('saved controls \n', saved_u)
-    DeePC = handle_data()
+    DeePC = M_data()
     H_u = np.zeros((Tini + Tf, Td-L+1, saved_u.shape[1]))
     for i in range(Td):
         H_u = DeePC.hankel(saved_u[:], L, Td-L+1)
@@ -62,16 +76,6 @@ if __name__ == '__main__':
     U_f = np.zeros(())
     U_p = H_u[0:Tini,:,:]
     U_f = H_u[Tini:-1,:,:]
-
-    # Up_flat = U_p.reshape((Tini*(Td-L+1),saved_u.shape[1]))
-    print("U_p \n", U_p)  # shape Up(6, 301, 3)   (,3)
-    # Up_flat = U_p.reshape(-1, n_controls)
-    # print("Up_flat \n", Up_flat)
-    # print("Up_flat \n", Up_flat.shape)
-    # Up_flat = U_p.reshape(-1, 1)
-    # Up_flat = (U_p.reshape(-1,  n_controls)).reshape(-1, 1)
-    # Up_flat = ca.reshape(U_p, -1, 1)
-    # print("Up_flat \n", Up_flat)
 
     Y_p = np.zeros((Tini, Td-L+1, saved_y.shape[1]))
     Y_f = np.zeros(())
@@ -112,48 +116,29 @@ if __name__ == '__main__':
     print("control ref \n", U_ref.shape)
     for i in range(Tf-1):
         U_ref[2,i] = 9.8066
-    U_ref = U_ref.T
-    print("control ref \n", U_ref.shape)  # (24,3)
 
     G = ca.SX.sym('G', Td-L+1, 1)    # (301,1)
     G_ref = ca.SX.sym('G_ref', Td-L+1, 1) #(301,1)
-    Up = U_p.reshape(-1, 1)
-    Uf = U_f.reshape(-1, 1)  # (3*24,301)
-    Yp = Y_p.reshape(-1, 1)  # (9*6,301)
-    Yf = Y_f.reshape(-1, 1) # (9*25,301)
-    print("Up \n", Up)
-    print("Uf \n", Uf.shape)
-    print("Yp \n", Yp.shape)
-    print("Yf \n", Yf.shape)
-
-    Up = U_p.reshape(Td-L+1, n_controls*Tini)
-    Uf = U_f.reshape(Td-L+1, n_controls*(Tf-1))  # (3*24,301)
-    Yp = Y_p.reshape(Td-L+1, n_states*Tini)  # (9*6,301)
-    Yf = Y_f.reshape(Td-L+1, n_states*Tf) # (9*25,301)
-    print("Up \n", Up)
-    print("Uf \n", Uf.shape)
-    print("Yp \n", Yp.shape)
-    print("Yf \n", Yf.shape)
-
-    Up = Up.T
-    Uf = Uf.T
-    Yp = Yp.T
-    Yf = Yf.T
-    print("Up \n", Up)
-    print("Uf \n", Uf.shape)
-    print("Yp \n", Yp)
-    print("Yf \n", Yf.shape)
+    U_p = DeePC.matrix(U_p)
+    U_f = DeePC.matrix(U_f)
+    Y_p = DeePC.matrix(Y_p)
+    Y_f = DeePC.matrix(Y_f)
+    print("U_p \n", U_p)
+    print("U_f \n", U_f)
+    print("Y_p \n", Y_p.shape)
+    print("Y_f \n", Y_f.shape)
 
 
     # r(g)
     r_g = []
     lambda_g = 500
-    stacked_ur_Tini = ca.repmat(U_ref[1,:], 1, Tini)
+    stacked_ur_Tini = ca.repmat(U_ref[:,1], 1, Tini) 
     stacked_yr_Tini = ca.repmat(Y_ref[24,:], 1, Tini)
-    stacked_ur_Tf = ca.repmat(U_ref[1,:], 1, Tf-1)
+    stacked_ur_Tf = ca.repmat(U_ref[:,1],1, Tf-1)
     stacked_yr_Tf = ca.repmat(Y_ref[24,:], 1, Tf)
-    print("stacked1 shape:", stacked_ur_Tini.shape)
-    print("stacked2 shape:", stacked_yr_Tini.shape)
+    
+    print("stacked1 shape:", stacked_ur_Tini)
+    print("stacked2 shape:", stacked_yr_Tini)
     print("stacked3 shape:", stacked_ur_Tf.shape)
     print("stacked4 shape:", stacked_yr_Tf.shape)
     stacked = ca.vertcat(
@@ -164,7 +149,7 @@ if __name__ == '__main__':
         )
 
     print("stacked shape:", stacked.shape)
-    combined = ca.vertcat(Yp, Yf, Up, Uf)
+    combined = ca.vertcat(Y_p, Y_f, U_p, U_f)
     print("combined UY shape:", combined.shape)
 
     start_time = time.time()
@@ -179,6 +164,13 @@ if __name__ == '__main__':
     print('time for multi \n', end_time-t_)
     t_ = time.time()
     r_g = lambda_g*ca.norm_2(G-G_ref)
-    print("r(g) shape:", r_g.shape)
+    print("r(g) shape:", r_g)
     end_time = time.time()
     print('time for multi \n', end_time-t_)
+
+    # # data collection for saving calculation time
+    # data_save = handle_data()
+    # data_save.get_r_g(
+    #     r_g = r_g) 
+    # data_save.save_cul_r_g(
+    #     file_name = '../Data_MPC/r_g.npy')

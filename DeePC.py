@@ -133,8 +133,10 @@ class handle_deepc_data:
             temp_ = Y[:-1, i] - Y_ref[:-1, i+1]   
             obj = obj + ca.mtimes([temp_.T, self.Q_m, temp_])
 
+        # print("cost function \n", obj)
+
         # constraints cost
-        lambda_s = 7.5e8
+        lambda_s = 1e3
         print("G shape is \n", G.shape)
         # print("Yp shape is \n", Y_p.shape)
         g_norm = ca.norm_2(ca.mtimes([Y_p,G])-ca.reshape(y_ini, (-1, 1)))**2   # G from Yp
@@ -145,7 +147,7 @@ class handle_deepc_data:
 
         # r(g)
         r_g = []
-        lambda_g = 500
+        lambda_g = 1
         stacked_ur_Tini = ca.repmat(U_ref[:,1], 1, Tini)
         stacked_yr_Tini = ca.repmat(Y_ref[:, 24], 1, Tini)
         stacked_ur_Tf = ca.repmat(U_ref[:,1], 1, Tf-1)
@@ -161,14 +163,18 @@ class handle_deepc_data:
             ca.reshape(stacked_ur_Tf, -1, 1)       # Tf & U_ref
             )
         # print("stacked shape:", stacked.shape)
-        combined = ca.vertcat(Y_p, Y_f, U_p, U_f)   #(369,301)
+        # combined = ca.vertcat(Y_p, Y_f, U_p, U_f)   #(369,301)
         # print("combined UY shape:", combined.shape)
-
-        start_time = time.time()
-        combined_inv = ca.pinv(combined)    # (301,369)
+        # start_time = time.time()
+        # combined_inv = ca.pinv(combined)    # (301,369)
         # print("combined inv shape:", combined_inv.shape)
-        end_time = time.time()
-        print('time for inverse \n', end_time-start_time)
+        # end_time = time.time()
+        # print('time for inverse \n', end_time-start_time)
+
+        # saved inverse data for saving time
+        combined_inv = np.load('../Data_MPC/inverse.npy', allow_pickle= True)
+        print('saved inverse \n', combined_inv)
+
         t_ = time.time()
         G_ref = ca.mtimes(combined_inv, stacked)
         # print("G_ref shape:", G_ref.shape)
@@ -179,6 +185,7 @@ class handle_deepc_data:
         # print("r(g) shape:", r_g.shape)
         end_time = time.time()
         print('time for multi2 \n', end_time-t_)
+        obj = obj + r_g
 
         # constraints g
         g = []
@@ -324,7 +331,10 @@ if __name__ == '__main__':
     # initial_states = np.zeros((Tini, n_states))      # (6,9)
     initial_states = np.array([0.0]*n_states*Tini)      # (1,9)
     initial_control = np.array([0.0]*n_controls*Tini)
-    # print("init_state shape is: \n", init_state.shape)
+    # Set every 3rd element to 9.8066
+    initial_control[2::3] = 9.8066
+    print("init_control is: \n", initial_control)
+
     current_state = initial_states.copy()          # (1,9) or (6*9)
     opt_commands = np.zeros((N-1, n_controls))   # (24,3)
     next_states = np.zeros((N, n_states))   # (25,9)
@@ -385,8 +395,8 @@ if __name__ == '__main__':
 
     # set initial trajectory
     init_trajectory = np.array(
-        [[0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.1, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.1, 0.0, 0.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -463,9 +473,9 @@ if __name__ == '__main__':
         deepc_u_ = estimated_opt[:int(n_controls*(N-1))].reshape(N-1, n_controls)   # (24,3)
         deepc_y_ = estimated_opt[int(n_controls*(N-1)):int(n_controls*(N-1)+n_states*N)].reshape(N, n_states)     # (24,9)
         deepc_g_ = estimated_opt[int(n_controls*(N-1)+n_states*N):].reshape(Td-L+1, 1)   # G shape?    # (301,1)
-        print('deepc u \n',deepc_u_)
-        print('deepc y \n',deepc_y_)
-        print('deepc_g \n',deepc_g_)
+        print('deepc u \n',deepc_u_.shape)
+        print('deepc y \n',deepc_y_.shape)
+        print('deepc_g \n',deepc_g_.shape)
         
         # data collection for saving calculation time
         data_save = handle_data()
@@ -493,21 +503,45 @@ if __name__ == '__main__':
         # print('current {}'.format(current_state))
         # print('control {}'.format(deepc_u_[0]))
         deepc_iter += 1
-    fig = plt.axes(projection='3d')
-    ax.plot(deepc_u_[0,:], deepc_u_[1,:], deepc_u_[2,:], 'b')
-    ax.plot(deepc_y_[0,:], deepc_y_[1,:], deepc_y_[2,:], 'r')
-    plot.show()
+    
+    # # check the weight of the cost function
+    # cost_func = ca.mtimes([
+    #         (deepc_y_[:6, -1] - Y_ref[:6, -1]).T,    
+    #         self.P_m,                      
+    #         deepc_y_[:6, -1] - Y_ref[:6, -1]
+    # ])
+
+    # plot opt u & y
+    Tu = deepc_u_.shape[0]
+    T_values = np.arange(Tu)
+    Ty = np.arange(deepc_y_.shape[0])
+    fig, axs = plt.subplots(3, 2)
+    axs[0, 0].plot(T_values, deepc_u_[:,0])
+    axs[0, 0].set_title("deepc u position 1")
+    axs[1, 0].plot(T_values, deepc_u_[:,1])
+    axs[1, 0].set_title("deepc u position 2")
+    axs[2, 0].plot(T_values, deepc_u_[:,2])
+    axs[2, 0].set_title("deepc u position 3")
+    axs[0, 1].plot(Ty, deepc_y_[:,0])
+    axs[0, 1].set_title("deepc y position 1")
+    axs[1, 1].plot(Ty, deepc_y_[:,1])
+    axs[1, 1].set_title("deepc y position 2")
+    axs[2, 1].plot(Ty, deepc_y_[:,2])
+    axs[2, 1].set_title("deepc y position 3")
+    fig.tight_layout()
+    plt.show() 
+
 
     print((time.time() - start_time)/deepc_iter)
     print('the average time for casadi-solver\n',np.array(index_time).mean())
-    #print('max iter time {}'.format(np.max(index_time)))
-    traj_s = np.array(x_c)   # current from saved traj
-    traj_d = np.array(traj_c)  # next calculated traj
-    # fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-    fig = plt.axes(projection='3d')
-    # ax = fig.gca(projection='3d')
-    ax.plot(traj_s[:, 0], traj_s[:, 1], traj_s[:, 2], 'b')  # traj_s列1为x,xyz轴输入和颜色
-    ax.plot(traj_d[:, 0], traj_d[:, 1], traj_d[:, 2], 'r')
-    plt.show()
+    # #print('max iter time {}'.format(np.max(index_time)))
+    # traj_s = np.array(x_c)   # current from saved traj
+    # traj_d = np.array(traj_c)  # next calculated traj
+    # # fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    # fig = plt.axes(projection='3d')
+    # # ax = fig.gca(projection='3d')
+    # ax.plot(traj_s[:, 0], traj_s[:, 1], traj_s[:, 2], 'b')  # traj_s列1为x,xyz轴输入和颜色
+    # ax.plot(traj_d[:, 0], traj_d[:, 1], traj_d[:, 2], 'r')
+    # plt.show()
 
  

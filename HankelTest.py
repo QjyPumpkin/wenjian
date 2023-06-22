@@ -61,6 +61,8 @@ if __name__ == '__main__':
         H_u = DeePC.hankel(saved_u[:], L, Td-L+1)
     # print("Hankel_u is:", H_u)
     print("Hankel_u's shape is:", H_u.shape)
+    rank_Hu = np.linalg.matrix_rank(H_u)
+    print("Hankel_u's rank is:", rank_Hu)
 
     ## states to Hankel
     saved_y = np.load('../Data_MPC/MPC_states.npy', allow_pickle= True)
@@ -69,6 +71,8 @@ if __name__ == '__main__':
         H_y = DeePC.hankel(saved_y[:], L, Td-L+1)
     # print('saved states \n', saved_y)
     print("Hankel_y's shape is:", H_y.shape)
+    rank_Hy = np.linalg.matrix_rank(H_y)
+    print("Hankel_y's rank is:", rank_Hy)
 
     ## data collection for state and controls
     ### divide HM into two parts: past and future
@@ -128,6 +132,16 @@ if __name__ == '__main__':
     print("Y_p \n", Y_p.shape)
     print("Y_f \n", Y_f.shape)
 
+    rank_Up = np.linalg.matrix_rank(U_p)
+    print("Hankel_up's rank is:", rank_Up)
+    rank_Uf = np.linalg.matrix_rank(U_f)
+    print("Hankel_u's rank is:", rank_Uf)
+    rank_Yp = np.linalg.matrix_rank(Y_p)
+    print("Hankel_u's rank is:", rank_Yp)
+    rank_Yf = np.linalg.matrix_rank(Y_f)
+    print("Hankel_u's rank is:", rank_Yf)
+
+
 
     # r(g)
     r_g = []
@@ -157,6 +171,16 @@ if __name__ == '__main__':
     print("combined inv shape:", combined_inv.shape)
     end_time = time.time()
     print('time for inverse \n', end_time-start_time)
+
+ # data collection for saving calculation time
+    data_save = handle_data()
+    data_save.get_inv(
+        inverse = combined_inv) 
+    data_save.save_inv(
+        file_name = '../Data_MPC/inverse.npy')
+    # saved_inv = np.load('../Data_MPC/inverse.npy', allow_pickle= True)
+    # print('saved inverse \n', saved_inv)
+
     t_ = time.time()
     G_ref = ca.mtimes(combined_inv, stacked)
     print("G_ref shape:", G_ref.shape)
@@ -164,13 +188,6 @@ if __name__ == '__main__':
     print('time for multi \n', end_time-t_)
     t_ = time.time()
     r_g = lambda_g*ca.norm_2(G-G_ref)
-    print("r(g) shape:", r_g)
+    print("r(g) shape:", r_g.shape)
     end_time = time.time()
     print('time for multi \n', end_time-t_)
-
-    # # data collection for saving calculation time
-    # data_save = handle_data()
-    # data_save.get_r_g(
-    #     r_g = r_g) 
-    # data_save.save_cul_r_g(
-    #     file_name = '../Data_MPC/r_g.npy')

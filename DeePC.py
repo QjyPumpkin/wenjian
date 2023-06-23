@@ -52,13 +52,13 @@ class handle_deepc_data:
         # Vertical trajectory in z-direction (25,9)
         self.trajectory = np.array(
                 [
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 0.7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -113,12 +113,12 @@ class handle_deepc_data:
 
         # constraints and cost
         # end term: cost function ,let the last y better simulation
-        # state cost
+        # terminal cost
         obj = ca.mtimes([
             (Y[:6, -1] - Y_ref[:6, -1]).T,    
             self.P_m,                      
             Y[:6, -1] - Y_ref[:6, -1]
-        ])
+            ])
 
         ## control cost, u_cost = (u-u_ref)*R*(u-u_ref)
         # obj = []
@@ -126,32 +126,31 @@ class handle_deepc_data:
             temp_ = ca.vertcat(U[:, i] - U_ref[:, i])
             obj = obj + ca.mtimes([
                 temp_.T, self.R_m, temp_
-            ])
+                ])
             
         ## state cost, y_cost = (y-y_ref)*Q*(y-y_ref)
         for i in range(self.horizon-1):
             temp_ = Y[:-1, i] - Y_ref[:-1, i+1]   
             obj = obj + ca.mtimes([temp_.T, self.Q_m, temp_])
-
-        # print("cost function \n", obj)
+        stage_cost = obj
+        print("stage cost is \n", stage_cost)
 
         # constraints cost
         lambda_s = 1e3
         print("G shape is \n", G.shape)
         # print("Yp shape is \n", Y_p.shape)
         g_norm = ca.norm_2(ca.mtimes([Y_p,G])-ca.reshape(y_ini, (-1, 1)))**2   # G from Yp
-        print("g_norm shape is \n", g_norm.shape)
+        print("g_norm shape is \n", g_norm)
         obj = obj + lambda_s*g_norm
-        # for i in range(self.horizon-1):
-        #     x_next_ = self.RK_4(X[:, i], U[:, i], F_ext)
+
 
         # r(g)
         r_g = []
         lambda_g = 1
-        stacked_ur_Tini = ca.repmat(U_ref[:,1], 1, Tini)
-        stacked_yr_Tini = ca.repmat(Y_ref[:, 24], 1, Tini)
-        stacked_ur_Tf = ca.repmat(U_ref[:,1], 1, Tf-1)
-        stacked_yr_Tf = ca.repmat(Y_ref[:, 24], 1, Tf)
+        stacked_ur_Tini = ca.repmat(U_ref[:,1], 1, Tini)  # (3,6)
+        stacked_yr_Tini = ca.repmat(Y_ref[:, 24], 1, Tini) # (9,6)
+        stacked_ur_Tf = ca.repmat(U_ref[:,1], 1, Tf-1)  # (3,24)
+        stacked_yr_Tf = ca.repmat(Y_ref[:, 24], 1, Tf)   # (9,25)
         print("stacked1 shape:", stacked_ur_Tini)
         print("stacked2 shape:", stacked_yr_Tini.shape)
         print("stacked3 shape:", stacked_ur_Tf.shape)
@@ -329,9 +328,9 @@ if __name__ == '__main__':
     deepc_obj = handle_deepc_data(state_dim=n_states, dt=dt, N=N)
     # initial_control = np.zeros((Tini, n_controls))   # (6,3)
     # initial_states = np.zeros((Tini, n_states))      # (6,9)
-    initial_states = np.array([0.0]*n_states*Tini)      # (1,9)
-    initial_control = np.array([0.0]*n_controls*Tini)
-    # Set every 3rd element to 9.8066
+    initial_states = np.array([0.0]*n_states*Tini)      # (9*6,)
+    initial_control = np.array([0.0]*n_controls*Tini)   # (3*6,)
+    # Set every 3rd element of initial_control to 9.8066
     initial_control[2::3] = 9.8066
     print("init_control is: \n", initial_control)
 
@@ -339,15 +338,12 @@ if __name__ == '__main__':
     opt_commands = np.zeros((N-1, n_controls))   # (24,3)
     next_states = np.zeros((N, n_states))   # (25,9)
     # G_guess = np.zeros((Td-L+1, 1))   # (301,1)
-    G_guess = np.array([0.0]*(Td-L+1))
+    G_guess = np.array([0.0]*(Td-L+1))  # (301,)
     control_ref = np.zeros((n_controls, Tf-1))   # (3,24)
-    # control_ref = np.array([0.0]*n_controls*(Tf-1))
-    print('first stage proofed - object generated')
     for i in range(Tf-1):
         control_ref[2,i] = 9.8066
     control_ref = control_ref.reshape(-1, 1)
-    # control_ref = np.zeros(((N-1)*n_controls, Td-L+1))
-    
+    print('first stage proofed - object generated')
 
     # Hankel Matrix
     ## controls to Hankel
@@ -503,13 +499,6 @@ if __name__ == '__main__':
         # print('current {}'.format(current_state))
         # print('control {}'.format(deepc_u_[0]))
         deepc_iter += 1
-    
-    # # check the weight of the cost function
-    # cost_func = ca.mtimes([
-    #         (deepc_y_[:6, -1] - Y_ref[:6, -1]).T,    
-    #         self.P_m,                      
-    #         deepc_y_[:6, -1] - Y_ref[:6, -1]
-    # ])
 
     # plot opt u & y
     Tu = deepc_u_.shape[0]

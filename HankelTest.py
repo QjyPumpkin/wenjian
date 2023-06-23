@@ -50,6 +50,7 @@ if __name__ == '__main__':
     p = 3 # number of output = c.shape[0]L = 83  # Td>=(m+1)L-1
     dt = 0.1
     N = Tf
+    horizon = 25
 
     # Hankel Matrix
     ## controls to Hankel
@@ -61,8 +62,7 @@ if __name__ == '__main__':
         H_u = DeePC.hankel(saved_u[:], L, Td-L+1)
     # print("Hankel_u is:", H_u)
     print("Hankel_u's shape is:", H_u.shape)
-    rank_Hu = np.linalg.matrix_rank(H_u)
-    print("Hankel_u's rank is:", rank_Hu)
+    # rank_Hu = np.linalg.matrix_rank(H_u)
 
     ## states to Hankel
     saved_y = np.load('../Data_MPC/MPC_states.npy', allow_pickle= True)
@@ -71,8 +71,6 @@ if __name__ == '__main__':
         H_y = DeePC.hankel(saved_y[:], L, Td-L+1)
     # print('saved states \n', saved_y)
     print("Hankel_y's shape is:", H_y.shape)
-    rank_Hy = np.linalg.matrix_rank(H_y)
-    print("Hankel_y's rank is:", rank_Hy)
 
     ## data collection for state and controls
     ### divide HM into two parts: past and future
@@ -88,10 +86,21 @@ if __name__ == '__main__':
     print("Y_p \n", Y_p.shape)
     print("Y_f \n", Y_f.shape)
 
+    G = ca.SX.sym('G', Td-L+1, 1)    # (301,1)
+    G_ref = ca.SX.sym('G_ref', Td-L+1, 1) #(301,1)
+    U_p = DeePC.matrix(U_p)
+    U_f = DeePC.matrix(U_f)
+    Y_p = DeePC.matrix(Y_p)
+    Y_f = DeePC.matrix(Y_f)
+    print("U_p \n", U_p)
+    print("U_f \n", U_f)
+    print("Y_p \n", Y_p)
+    print("Y_f \n", Y_f)
+
     Y_ref = np.array(
-        [[0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.1, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.1, 0.0, 0.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.1, 0.0, 0.69, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -115,33 +124,77 @@ if __name__ == '__main__':
         [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         ])
+    
+    Y_ref = Y_ref.T   # (9,25)
+    print("Y ref test \n", Y_ref[:6, -1])
 
     U_ref = np.zeros((n_controls, Tf-1))   # (3,24)
     print("control ref \n", U_ref.shape)
     for i in range(Tf-1):
         U_ref[2,i] = 9.8066
 
-    G = ca.SX.sym('G', Td-L+1, 1)    # (301,1)
-    G_ref = ca.SX.sym('G_ref', Td-L+1, 1) #(301,1)
-    U_p = DeePC.matrix(U_p)
-    U_f = DeePC.matrix(U_f)
-    Y_p = DeePC.matrix(Y_p)
-    Y_f = DeePC.matrix(Y_f)
-    print("U_p \n", U_p)
-    print("U_f \n", U_f)
-    print("Y_p \n", Y_p.shape)
-    print("Y_f \n", Y_f.shape)
-
+    
     rank_Up = np.linalg.matrix_rank(U_p)
     print("Hankel_up's rank is:", rank_Up)
     rank_Uf = np.linalg.matrix_rank(U_f)
-    print("Hankel_u's rank is:", rank_Uf)
+    print("Hankel_uf's rank is:", rank_Uf)
     rank_Yp = np.linalg.matrix_rank(Y_p)
-    print("Hankel_u's rank is:", rank_Yp)
+    print("Hankel_yp's rank is:", rank_Yp)
     rank_Yf = np.linalg.matrix_rank(Y_f)
-    print("Hankel_u's rank is:", rank_Yf)
+    print("Hankel_yf's rank is:", rank_Yf)
+    
+    deepc_u_ = np.load('../Data_MPC/deepc_u.npy', allow_pickle= True)
+    print('saved deepc u \n', deepc_u_.shape)   # u shape(24,3)
+    deepc_y_ = np.load('../Data_MPC/deepc_y.npy', allow_pickle= True)
+    print('saved deepc y \n', deepc_y_)   # y shape(25,9)
+    deepc_u_ = deepc_u_.T
+    print('saved deepc u \n', deepc_u_.shape)
+    deepc_y_ = deepc_y_.T
+    print('saved deepc y \n', deepc_y_.shape)
+    print('saved deepc y \n', deepc_y_[:6, -1])
 
+    # additional parameters for cost function
+    R_m = np.diag([160.0, 4.0, 4.0]) # roll_ref, pitch_ref, thrust
+    Q_m = np.diag([40.0, 40.0, 40.0, 0.0, 0.0, 0.0, 0.0, 0.0])  
+    P_m = np.diag([86.21, 86.21, 120.95, 6.94, 6.94, 11.04])
+    P_m[0, 3] = 6.45
+    P_m[3, 0] = 6.45
+    P_m[1, 4] = 6.45
+    P_m[4, 1] = 6.45
+    P_m[2, 5] = 10.95
+    P_m[5, 2] = 10.95 
 
+    A = (deepc_y_[:6, -1] - Y_ref[:6, -1]).T
+    print("A \n", A)
+
+    # check the weight of the cost function
+    # terminal cost
+    cost_func = ca.mtimes([
+            (deepc_y_[:6, -1] - Y_ref[:6, -1]),    
+            P_m,                      
+            (deepc_y_[:6, -1] - Y_ref[:6, -1]).T
+            ])
+
+    # control cost, u_cost = (u-u_ref)*R*(u-u_ref)
+    for i in range(horizon-1):
+        temp_ = ca.vertcat(deepc_u_[:, i] - U_ref[:, i])
+        obj = obj + ca.mtimes([
+            temp_, R_m, temp_.T
+            ])
+
+    # state cost, y_cost = (y-y_ref)*Q*(y-y_ref)
+    for i in range(horizon-1):
+        temp_ = deepc_y_[:-1, i] - Y_ref[:-1, i+1]   
+        obj = obj + ca.mtimes([temp_, Q_m, temp_.T])
+    print("stage cost weight \n", obj)
+
+    # constraints cost
+    lambda_s = 1e3
+    print("G shape is \n", G.shape)
+    g_norm = ca.norm_2(ca.mtimes([Y_p,G])-ca.reshape(y_ini, (-1, 1)))**2   # G from Yp
+    print("g_norm shape is \n", g_norm.shape)
+    obj = obj + lambda_s*g_norm
+    print("constraints cost weight \n", g_norm)
 
     # r(g)
     r_g = []
@@ -151,8 +204,8 @@ if __name__ == '__main__':
     stacked_ur_Tf = ca.repmat(U_ref[:,1],1, Tf-1)
     stacked_yr_Tf = ca.repmat(Y_ref[24,:], 1, Tf)
     
-    print("stacked1 shape:", stacked_ur_Tini)
-    print("stacked2 shape:", stacked_yr_Tini)
+    print("stacked1 shape:", stacked_ur_Tini.shape)
+    print("stacked2 shape:", stacked_yr_Tini.shape)
     print("stacked3 shape:", stacked_ur_Tf.shape)
     print("stacked4 shape:", stacked_yr_Tf.shape)
     stacked = ca.vertcat(
@@ -163,22 +216,22 @@ if __name__ == '__main__':
         )
 
     print("stacked shape:", stacked.shape)
-    combined = ca.vertcat(Y_p, Y_f, U_p, U_f)
-    print("combined UY shape:", combined.shape)
+    # combined = ca.vertcat(Y_p, Y_f, U_p, U_f)
+    # print("combined UY shape:", combined.shape)
 
-    start_time = time.time()
-    combined_inv = ca.pinv(combined)
-    print("combined inv shape:", combined_inv.shape)
-    end_time = time.time()
-    print('time for inverse \n', end_time-start_time)
+    # start_time = time.time()
+    # combined_inv = ca.pinv(combined)
+    # print("combined inv shape:", combined_inv.shape)
+    # end_time = time.time()
+    # print('time for inverse \n', end_time-start_time)
 
- # data collection for saving calculation time
-    data_save = handle_data()
-    data_save.get_inv(
-        inverse = combined_inv) 
-    data_save.save_inv(
-        file_name = '../Data_MPC/inverse.npy')
-    # saved_inv = np.load('../Data_MPC/inverse.npy', allow_pickle= True)
+#  # data collection for saving calculation time
+#     data_save = handle_data()
+#     data_save.get_inv(
+#         inverse = combined_inv) 
+#     data_save.save_inv(
+#         file_name = '../Data_MPC/inverse.npy')
+    combined_inv = np.load('../Data_MPC/inverse.npy', allow_pickle= True)
     # print('saved inverse \n', saved_inv)
 
     t_ = time.time()
@@ -187,7 +240,9 @@ if __name__ == '__main__':
     end_time = time.time()
     print('time for multi \n', end_time-t_)
     t_ = time.time()
+    reg = ca.norm_2(G-G_ref)
     r_g = lambda_g*ca.norm_2(G-G_ref)
     print("r(g) shape:", r_g.shape)
     end_time = time.time()
     print('time for multi \n', end_time-t_)
+    print("regularization func weight \n", reg)

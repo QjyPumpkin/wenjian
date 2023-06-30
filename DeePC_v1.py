@@ -451,21 +451,35 @@ if __name__ == '__main__':
 
     # check the weight of cost function
     cost_func = ca.mtimes([
-        (deepc_y_[:6, -1] - Y_ref[:6, -1]).T,    
+        (deepc_y_[:6, -1] - init_trajectory[:6, -1]).T,    
         P_m,                      
-        Y[:6, -1] - Y_ref[:6, -1]
+        Y[:6, -1] - init_trajectory[:6, -1]
         ])
+    
+    # additional parameters for cost function
+    R_m = np.diag([4.0, 4.0, 160.0]) # roll_ref, pitch_ref, thrust
+    Q_m = np.diag([40.0, 40.0, 40.0, 0.0, 0.0, 0.0, 0.0, 0.0])  
+    P_m = np.diag([86.21, 86.21, 120.95, 6.94, 6.94, 11.04])
+    P_m[0, 3] = 6.45
+    P_m[3, 0] = 6.45
+    P_m[1, 4] = 6.45
+    P_m[4, 1] = 6.45
+    P_m[2, 5] = 10.95
+    P_m[5, 2] = 10.95 
 
     ## control cost, u_cost = (u-u_ref)*R*(u-u_ref)
     # obj = []
-    for i in range(self.horizon-1):
-        temp_ = ca.vertcat(U[:, i] - U_ref[:, i])
+    for i in range(Tf-1):
+        temp_ = ca.vertcat(deepc_u_[:, i] - control_ref[:, i])
         obj = obj + ca.mtimes([
-            temp_.T, self.R_m, temp_
+            temp_.T, R_m, temp_
             ])
         
     ## state cost, y_cost = (y-y_ref)*Q*(y-y_ref)
-    for i in range(self.horizon-1):
-        temp_ = Y[:-1, i] - Y_ref[:-1, i+1]   
-        obj = obj + ca.mtimes([temp_.T, self.Q_m, temp_])
+    for i in range(Tf-1):
+        temp_ = deepc_y_[:-1, i] - init_trajectory[:-1, i+1]   
+        obj = obj + ca.mtimes([temp_.T, Q_m, temp_])
 
+    print ("cost function \n", obj)
+
+   

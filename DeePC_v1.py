@@ -52,9 +52,9 @@ class handle_deepc_data:
         # Vertical trajectory in z-direction (25,9)
         self.trajectory = np.array(
                 [
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 0.7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -89,7 +89,7 @@ class handle_deepc_data:
         self.P_m[4, 1] = 6.45
         self.P_m[2, 5] = 10.95
         self.P_m[5, 2] = 10.95 
-        # need thrust in the vertical direction, Q_m最后一项不为0
+        # need thrust in the vertical direction, Q_m last term >0
 
         # DeePC
         # states and parameters
@@ -106,6 +106,8 @@ class handle_deepc_data:
         U_f = ca.SX.sym('U_f', num_controls*(Tf-1), Td-L+1)  # (3*24,301)
         Y_p = ca.SX.sym('Y_p', num_states*Tini, Td-L+1)  # (9*6,301)
         Y_f = ca.SX.sym('Y_f', num_states*Tf, Td-L+1)  # (9*25,301)
+        U2Y = ca.vertcat(Y_p, Y_f, U_p, U_f) # (369,301)
+        print("U2Y shape \n", U2Y.shape)
 
         # constraints and cost
         # end term: cost function ,let the last y better simulation
@@ -132,8 +134,8 @@ class handle_deepc_data:
 
         # constraints g
         g = []
-        variables = ca.vertcat(ca.reshape(y_ini, (-1, 1)), ca.reshape(Y, (-1, 1)), ca.reshape(u_ini, (-1, 1)), ca.reshape(U, (-1, 1)))    # (315,1) 
-        # print("variables shape is :",variables.shape)    #(315,1) 
+        variables = ca.vertcat(ca.reshape(y_ini, (-1, 1)), ca.reshape(Y, (-1, 1)), ca.reshape(u_ini, (-1, 1)), ca.reshape(U, (-1, 1)))    # (369,1) 
+        # print("variables shape is :",variables.shape)   
 
         # for i in range(self.horizon-1):  # first Y_next_ read from the first row from saved Y_f file 
             # Y_next_ = ca.mtimes(Y_f[:, i], G) # Y_next_ computed: y = Y_f*G
@@ -146,7 +148,7 @@ class handle_deepc_data:
         opt_variables = ca.vertcat(ca.reshape(U, -1, 1), ca.reshape(Y, -1, 1), ca.reshape(G, -1, 1))
         opt_params = ca.vertcat(ca.reshape(U_ref, -1, 1), ca.reshape(Y_ref, -1, 1), ca.reshape(u_ini, -1, 1), ca.reshape(y_ini, -1, 1), ca.reshape(U_p, -1, 1),ca.reshape(U_f, -1, 1), ca.reshape(Y_p, -1, 1), ca.reshape(Y_f, -1, 1) )
         nlp_prob = {'f': obj, 'x':opt_variables, 'p':opt_params,'g':ca.vertcat(*g)}
-        opts_setting = {'ipopt.max_iter':200, 'ipopt.print_level':3, 'print_time':0, 'ipopt.acceptable_tol':1e-8, 'ipopt.acceptable_obj_change_tol':1e-6, 'ipopt.warm_start_init_point':'no'}
+        opts_setting = {'ipopt.max_iter':250, 'ipopt.print_level':3, 'print_time':0, 'ipopt.acceptable_tol':1e-8, 'ipopt.acceptable_obj_change_tol':1e-6, 'ipopt.warm_start_init_point':'no'}
 
         self.solver = ca.nlpsol('solver', 'ipopt', nlp_prob, opts_setting)
 
@@ -219,7 +221,7 @@ class handle_deepc_data:
             if current_state[2] >= self.trajectory[0, 2]:
                 self.trajectory = np.concatenate((current_state.reshape(1, -1), self.trajectory[2:], self.trajectory[-1:]))
         else:
-            idx_ = np.array([(iter+i-30)/360.0*np.pi for i in range(19)])
+            idx_ = np.array([(iter+i-30)/360.0*np.pi for i in range(24)])
             trajectory_ =  self.trajectory[1:].copy()
             trajectory_[:, :2] = np.concatenate((np.cos(idx_), np.sin(idx_))).reshape(2, -1).T
             self.trajectory = np.concatenate((current_state.reshape(1, -1), trajectory_))
@@ -308,7 +310,7 @@ if __name__ == '__main__':
     init_trajectory = np.array(
         [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.1, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.1, 0.0, 0.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.1, 0.0, 0.69, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -392,11 +394,10 @@ if __name__ == '__main__':
         data_save = handle_data()
         data_save.get_dmoc_x_u(
             opt_x=deepc_y_,opt_u=deepc_u_, Tn=t_save, N=N) 
-        # data_save.get_target_trajectory(target_trajectory=np.concatenate((x_c,traj_d),axis=1)) 
         data_save.save_loaded_u(
-            file_name = '../Data_MPC/deepc_u.npy')
+            file_name = '../Data_MPC/deepc_v1_u.npy')
         data_save.save_loaded_x(
-            file_name = '../Data_MPC/deepc_y.npy')
+            file_name = '../Data_MPC/deepc_v1_y.npy')
 
         # save results
         u_save.append(deepc_u_[0, :])
@@ -447,3 +448,24 @@ if __name__ == '__main__':
     # ax.plot(traj_s[:, 0], traj_s[:, 1], traj_s[:, 2], 'b')  # traj_s列1为x,xyz轴输入和颜色
     # ax.plot(traj_d[:, 0], traj_d[:, 1], traj_d[:, 2], 'r')
     # plt.show()
+
+    # check the weight of cost function
+    cost_func = ca.mtimes([
+        (deepc_y_[:6, -1] - Y_ref[:6, -1]).T,    
+        P_m,                      
+        Y[:6, -1] - Y_ref[:6, -1]
+        ])
+
+    ## control cost, u_cost = (u-u_ref)*R*(u-u_ref)
+    # obj = []
+    for i in range(self.horizon-1):
+        temp_ = ca.vertcat(U[:, i] - U_ref[:, i])
+        obj = obj + ca.mtimes([
+            temp_.T, self.R_m, temp_
+            ])
+        
+    ## state cost, y_cost = (y-y_ref)*Q*(y-y_ref)
+    for i in range(self.horizon-1):
+        temp_ = Y[:-1, i] - Y_ref[:-1, i+1]   
+        obj = obj + ca.mtimes([temp_.T, self.Q_m, temp_])
+

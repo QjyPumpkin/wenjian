@@ -22,8 +22,11 @@ class handle_data(object):
     def get_computation_time(self, t_comp):
         self.computation_time = t_comp
 
-    def get_r_g(self, r_g):
-        self.r_g = r_g
+    def get_inv(self, inverse):
+        self.inverse = inverse
+
+    def get_G(self, G):
+        self.G = G
 
     def save_loaded_data(self,file_name):
         with open(file_name,'wb') as f:
@@ -44,10 +47,15 @@ class handle_data(object):
             np.save(f, self.opt_x)
             print("saving states done")
 
-    def save_cul_r_g(self, file_name):
+    def save_inv(self, file_name):
         with open(file_name,'wb') as f:
-            np.save(f, self.r_g)
-            print("saving r(g) done")
+            np.save(f, self.inverse)
+            print("saving inverse done")
+
+    def save_G(self, file_name):
+        with open(file_name, 'wb') as f:
+            np.save(f, self.G)
+            print("saving G done")
 
     def load_saved_data(self,file_name): # filename = where to save the data
         with open(file_name, 'rb') as f:
@@ -70,10 +78,15 @@ class handle_data(object):
             self.opt_x = np.load(f, allow_pickle=True)
             return opt_x
 
-    def load_r_g(self,file_name):
+    def load_inv(self,file_name):
         with open(file_name, 'rb') as f:
-            self.r_g = np.load(f, allow_pickle=True)
-            return r_g
-            
+            self.inverse = np.load(f, allow_pickle=True)
+            return inverse
+        
+    def load_G(self,file_name):
+        with open(file_name, 'rb') as f:
+            self.G = np.load(f, allow_pickle=True)
+            return G
+        
 
 

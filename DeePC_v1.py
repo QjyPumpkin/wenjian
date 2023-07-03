@@ -449,13 +449,6 @@ if __name__ == '__main__':
     # ax.plot(traj_d[:, 0], traj_d[:, 1], traj_d[:, 2], 'r')
     # plt.show()
 
-    # check the weight of cost function
-    cost_func = ca.mtimes([
-        (deepc_y_[:6, -1] - init_trajectory[:6, -1]).T,    
-        P_m,                      
-        Y[:6, -1] - init_trajectory[:6, -1]
-        ])
-    
     # additional parameters for cost function
     R_m = np.diag([4.0, 4.0, 160.0]) # roll_ref, pitch_ref, thrust
     Q_m = np.diag([40.0, 40.0, 40.0, 0.0, 0.0, 0.0, 0.0, 0.0])  
@@ -466,6 +459,13 @@ if __name__ == '__main__':
     P_m[4, 1] = 6.45
     P_m[2, 5] = 10.95
     P_m[5, 2] = 10.95 
+
+    # check the weight of cost function
+    cost_func = ca.mtimes([
+        (deepc_y_[:6, -1] - init_trajectory[:6, -1]).T,    
+        P_m,                      
+        deepc_y_[:6, -1] - init_trajectory[:6, -1]
+        ])
 
     ## control cost, u_cost = (u-u_ref)*R*(u-u_ref)
     # obj = []

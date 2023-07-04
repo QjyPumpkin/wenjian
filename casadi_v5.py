@@ -15,7 +15,7 @@ from data_collection import handle_data
 
 
 class MPC_test():
-    def __init__(self, state_dim, dt=0.1, N=20):
+    def __init__(self, state_dim, dt=0.1, N=25):
         self.Ts = dt
         self.horizon = N
         self.g_ = 9.8066
@@ -41,6 +41,11 @@ class MPC_test():
                 [0.0, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 0.7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -89,14 +94,6 @@ class MPC_test():
         rhs.append(0.0)
         self.f = ca.Function('f', [states_, controls_, ext_f_], [ca.vertcat(*rhs)])
 
-        ###### TEST
-        # dae = {'x':states_, 'p':ca.vcat([controls_, ext_f_]), 'ode':states_}
-        # opts = {'tf':dt}
-        # self.f_cvo = ca.integrator('f_cvo', 'cvodes', dae, opts)
-        # x_te = ca.SX.sym('x_te', 9)
-        # c_te = ca.SX.sym('c_te', 3)
-        # f_te = ca.SX.sym('f_te', 3)
-        # print(self.f_cvo(x0=x_te, p=ca.vcat([c_te, f_te])))
 
         ## additional parameters
         # self.external_forces = ca.SX.sym('F_ext', 3)
@@ -110,8 +107,6 @@ class MPC_test():
         self.P_m[2, 5] = 10.95
         self.P_m[5, 2] = 10.95
         self.R_m = np.diag([50.0, 60.0, 1.0]) # roll_ref, pitch_ref, thrust
-
-
 
         # MPC
         ## states and parameters
@@ -129,7 +124,7 @@ class MPC_test():
         ### control cost
         for i in range(self.horizon-1):
             temp_ = ca.vertcat(U[:2, i], np.cos(X[6, i])*np.cos(X[7, i])*U[2, i] - self.g_)
-            # print("temp_ shape is:", temp_.shape)
+            print("temp_ shape is:", temp_.shape)
             obj = obj + ca.mtimes([
                 temp_.T, self.R_m, temp_
             ])
@@ -153,29 +148,6 @@ class MPC_test():
         opts_setting = {'ipopt.max_iter':200, 'ipopt.print_level':1, 'print_time':0, 'ipopt.acceptable_tol':1e-8, 'ipopt.acceptable_obj_change_tol':1e-6, 'ipopt.warm_start_init_point':'no'}
 
         self.solver = ca.nlpsol('solver', 'ipopt', nlp_prob, opts_setting) 
-        # ##### following only for test
-        # ## define constraints
-        # lbg = 0.0
-        # ubg = 0.0
-        # lbx = []
-        # ubx = []
-        # for _ in range(self.horizon-1):
-        #     lbx = lbx + [np.radians(-45), np.radians(-45), 0.5*self.g_]
-        #     ubx = ubx + [np.radians(45), np.radians(45), 1.5*self.g_]
-        # for _ in range(self.horizon):
-        #     lbx = lbx + [-np.inf]*state_dim
-        #     ubx = ubx + [np.inf]*state_dim
-        # u0 = np.zeros((self.horizon-1, num_controls))
-        # x0 = np.zeros((self.horizon, num_states))
-        # init_control = ca.vertcat(u0.reshape(-1, 1), x0.reshape(-1, 1))
-        # external_forces = np.array([0.0, 0.0, 0.0])
-        # c_p = ca.vertcat(external_forces.reshape(-1, 1), self.trajectory.reshape(-1, 1))
-        # res = self.solver(x0=init_control, p=c_p, lbg=lbg, ubg=ubg, lbx=lbx, ubx=ubx)
-        # estimated_opt = res['x'].full()
-        # u1 = estimated_opt[:int(num_controls*(self.horizon-1))].reshape(self.horizon-1, num_controls)
-        # x1 = estimated_opt[int(num_controls*(self.horizon-1)):].reshape(self.horizon, num_states)
-        # print(u1)
-        # print(x1)
 
     def aero_drag(self, states, controls):
         # aero dynamic drag acceleration
@@ -266,7 +238,7 @@ class MPC_test():
             if current_state[2] >= self.trajectory[0, 2]:
                 self.trajectory = np.concatenate((current_state.reshape(1, -1), self.trajectory[2:], self.trajectory[-1:]))
         else:
-            idx_ = np.array([(iter+i-30)/360.0*np.pi for i in range(19)])
+            idx_ = np.array([(iter+i-30)/360.0*np.pi for i in range(24)])
             trajectory_ =  self.trajectory[1:].copy()
             trajectory_[:, :2] = np.concatenate((np.cos(idx_), np.sin(idx_))).reshape(2, -1).T
             self.trajectory = np.concatenate((current_state.reshape(1, -1), trajectory_))
@@ -314,7 +286,7 @@ class MPC_test():
 if __name__ == '__main__':
     # model parameters
     n_states = 9 # [x v e ]
-    N = 20
+    N = 25
     n_controls = 3
     dt = 0.1
     # create an MPC object
@@ -324,50 +296,33 @@ if __name__ == '__main__':
     opt_commands = np.zeros((N-1, n_controls))
     next_states = np.zeros((N, n_states))
 
-    # init_trajectory = np.array(
-    #             [[0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #              [0.0, 0.0, 0.4, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0],
-    #             [0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.1, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.1, 0.0, 0.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.1, 0.0, 0.69, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.2, 0.0, 0.73, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.2, 0.0, 0.76, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.2, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.2, 0.0, 0.83, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.2, 0.0, 0.85, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.3, 0.0, 0.88, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.3, .2, 0.91, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.4, 0.2, 0.93, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.5, 0.2, 0.95, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.5, 0.2, 0.97, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.7, 0.2, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.8, 0.2, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.9, 0.2, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #             [0.9, 0.2, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    #             ])
-    init_trajectory = np.array(
-                [[0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                 [0.0, 0.0, 0.4, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.1, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.1, 0.0, 0.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.1, 0.0, 0.69, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.2, 0.0, 0.73, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.2, 0.0, 0.76, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.2, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.2, 0.0, 0.83, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.2, 0.0, 0.85, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.3, 0.0, 0.88, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.3, 0.0, 0.91, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.4, 0.0, 0.93, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.5, 0.0, 0.95, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.5, 0.0, 0.97, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.7, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.8, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.9, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-                ])
+    init_trajectory = np.array([
+        [0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.4, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.1, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.1, 0.0, 0.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.1, 0.0, 0.69, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.2, 0.0, 0.73, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.2, 0.0, 0.76, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.2, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.2, 0.0, 0.83, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.2, 0.0, 0.85, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.3, 0.0, 0.88, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.3, 0.0, 0.91, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.4, 0.0, 0.93, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.5, 0.0, 0.95, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.5, 0.0, 0.97, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.7, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.8, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.9, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        ])
     mpc_obj.trajectory = init_trajectory.copy()
     next_trajectories = init_trajectory.copy()
     ext_forces = np.array([0.0, 0.0, -0.1]).reshape(-1, 1)
@@ -431,9 +386,8 @@ if __name__ == '__main__':
     #print('max iter time {}'.format(np.max(index_time)))
     traj_s = np.array(x_c)
     traj_d = np.array(traj_c)
-    # fig = plt.figure()
-    # ax = fig.gca(projection='3d')
     ax = plt.figure().add_subplot(projection='3d')
+    # ax = fig.gca(projection='3d')
     ax.plot(traj_s[:, 0], traj_s[:, 1], traj_s[:, 2], 'b')  # traj_s列1为x,xyz轴输入和颜色
     ax.plot(traj_d[:, 0], traj_d[:, 1], traj_d[:, 2], 'r')
     plt.show()
@@ -449,9 +403,9 @@ if __name__ == '__main__':
     #     file_name = '../Data_MPC/casadi_data' + time_index + '.npy')
     
     data_save.save_loaded_u(
-        file_name = '../Data_MPC/MPC_controls.npy')
+        file_name = '../Data_MPC/MPC_controls2.npy')
     data_save.save_loaded_x(
-        file_name = '../Data_MPC/MPC_states.npy')
+        file_name = '../Data_MPC/MPC_states2.npy')
     
     print("save npy done")
     # print('opt_x \n',data_save.opt_x)
@@ -460,11 +414,13 @@ if __name__ == '__main__':
     # file_name = '../Data_MPC/casadi_data' + time_index + '.npy'
     # data = np.load(file_name, allow_pickle=True)
 
-    file_name = '../Data_MPC/MPC_states.npy'
+    file_name = '../Data_MPC/MPC_states2.npy'
     saved_states = np.load(file_name, allow_pickle=True)
     print("saved states are: \n", saved_states)
 
-    file_name = '../Data_MPC/MPC_controls.npy'
+    file_name = '../Data_MPC/MPC_controls2.npy'
     saved_controls = np.load(file_name, allow_pickle=True)
     print("saved controls are: \n", saved_controls)
 
+    # plot opt u & y
+    ## see test_for_plot

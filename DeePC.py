@@ -351,7 +351,7 @@ if __name__ == '__main__':
 
     # Hankel Matrix
     ## controls to Hankel
-    saved_u = np.load('../Data_MPC/MPC_controls.npy', allow_pickle= True)
+    saved_u = np.load('../Data_MPC/MPC_controls2.npy', allow_pickle= True)
     # print('saved controls \n', saved_u)
     DeePC = handle_deepc_data()
     H_u = np.zeros((Tini + Tf, Td-L+1, saved_u.shape[1]))
@@ -361,7 +361,7 @@ if __name__ == '__main__':
     # print("Hankel_u's shape is:", H_u.shape)
 
     ## states to Hankel
-    saved_y = np.load('../Data_MPC/MPC_states.npy', allow_pickle= True)
+    saved_y = np.load('../Data_MPC/MPC_states2.npy', allow_pickle= True)
     H_y = np.zeros((Tini + Tf, Td-L+1, saved_y.shape[1])) 
     for i in range(Td):
         H_y = DeePC.hankel(saved_y[:], L, Td-L+1)
@@ -476,18 +476,6 @@ if __name__ == '__main__':
         print('deepc u \n',deepc_u_.shape)
         print('deepc y \n',deepc_y_.shape)
         print('deepc_g \n',deepc_g_.shape)
-        
-        # data collection for saving calculation time
-        data_save = handle_data()
-        data_save.get_dmoc_x_u(
-            opt_x=deepc_y_,opt_u=deepc_u_, Tn=t_save, N=N) 
-        data_save.get_G(G=deepc_g_) 
-        data_save.save_loaded_u(
-            file_name = '../Data_MPC/deepc_u.npy')
-        data_save.save_loaded_x(
-            file_name = '../Data_MPC/deepc_y.npy')
-        data_save.save_G(
-            file_name = '../Data_MPC/deepc_g.npy')
 
         # save results
         u_save.append(deepc_u_[0, :])
@@ -505,6 +493,18 @@ if __name__ == '__main__':
         # print('current {}'.format(current_state))
         # print('control {}'.format(deepc_u_[0]))
         deepc_iter += 1
+
+    # data collection for saving calculation time
+    data_save = handle_data()
+    data_save.get_dmoc_x_u(
+        opt_x=deepc_y_,opt_u=deepc_u_, Tn=t_save, N=N) 
+    data_save.get_G(G=deepc_g_) 
+    data_save.save_loaded_u(
+        file_name = '../Data_MPC/deepc_u.npy')
+    data_save.save_loaded_x(
+        file_name = '../Data_MPC/deepc_y.npy')
+    data_save.save_G(
+        file_name = '../Data_MPC/deepc_g.npy')
 
     # plot opt u & y
     Tu = deepc_u_.shape[0]

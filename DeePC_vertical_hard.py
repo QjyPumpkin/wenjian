@@ -311,28 +311,28 @@ if __name__ == '__main__':
         [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.1, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.1, 0.0, 0.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.1, 0.0, 0.69, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.2, 0.0, 0.73, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.2, 0.0, 0.76, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.2, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.2, 0.0, 0.83, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.2, 0.0, 0.85, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.3, 0.0, 0.88, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.3, 0.0, 0.91, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.4, 0.0, 0.93, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.5, 0.0, 0.95, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.5, 0.0, 0.97, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.7, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.8, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.9, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        [0.0, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.69, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.73, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.76, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.83, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.85, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.88, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.91, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.93, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.95, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.97, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         ])
     
     deepc_obj.trajectory = init_trajectory
@@ -390,15 +390,6 @@ if __name__ == '__main__':
         print('deepc y \n',deepc_y_.shape)
         print('deepc_g \n',deepc_g_.shape)
         
-        # data collection for saving calculation time
-        data_save = handle_data()
-        data_save.get_dmoc_x_u(
-            opt_x=deepc_y_,opt_u=deepc_u_, Tn=t_save, N=N) 
-        data_save.save_loaded_u(
-            file_name = '../Data_MPC/deepc_v1_u.npy')
-        data_save.save_loaded_x(
-            file_name = '../Data_MPC/deepc_v1_y.npy')
-
         # save results
         u_save.append(deepc_u_[0, :])
         t_save.append(t0)
@@ -409,32 +400,45 @@ if __name__ == '__main__':
         t0, current_state, opt_commands, next_states = deepc_obj.model_based_movement(current_state[:9], deepc_u_[0, :], ext_forces, t0, deepc_u_, deepc_y_) # return t0+self.Ts, x_next, next_cmd_, next_s_
         # next_trajectories = deepc_obj.vertical_trajectory(current_state)
         # print(next_states)
-        next_trajectories = deepc_obj.circle_trajectory(current_state, deepc_iter)
+        next_trajectories = deepc_obj.vertical_trajectory(current_state)
         traj_c.append(next_trajectories[1])
         # print(next_trajectories[:3])
         # print('current {}'.format(current_state))
         # print('control {}'.format(deepc_u_[0]))
         deepc_iter += 1
 
-    # plot opt u & y
+    # data collection for saving calculation time
+    data_save = handle_data()
+    data_save.get_dmoc_x_u(
+        opt_x=deepc_y_,opt_u=deepc_u_, Tn=t_save, N=N) 
+    data_save.get_G(G=deepc_g_) 
+    data_save.save_loaded_u(
+        file_name = '../Data_MPC/deepc_u_vertical.npy')
+    data_save.save_loaded_x(
+        file_name = '../Data_MPC/deepc_y_vertical.npy')
+    data_save.save_G(
+        file_name = '../Data_MPC/deepc_g_vertical.npy')
+
+     # plot opt u & y
     Tu = deepc_u_.shape[0]
     T_values = np.arange(Tu)
     Ty = np.arange(deepc_y_.shape[0])
     fig, axs = plt.subplots(3, 2)
     axs[0, 0].plot(T_values, deepc_u_[:,0])
-    axs[0, 0].set_title("deepc u position 1")
+    axs[0, 0].set_title("vertical deepc u position 1")
     axs[1, 0].plot(T_values, deepc_u_[:,1])
-    axs[1, 0].set_title("deepc u position 2")
+    axs[1, 0].set_title("vertical deepc u position 2")
     axs[2, 0].plot(T_values, deepc_u_[:,2])
-    axs[2, 0].set_title("deepc u position 3")
+    axs[2, 0].set_title("vertical deepc u position 3")
     axs[0, 1].plot(Ty, deepc_y_[:,0])
-    axs[0, 1].set_title("deepc y position 1")
+    axs[0, 1].set_title("vertical deepc y position 1")
     axs[1, 1].plot(Ty, deepc_y_[:,1])
-    axs[1, 1].set_title("deepc y position 2")
+    axs[1, 1].set_title("vertical deepc y position 2")
     axs[2, 1].plot(Ty, deepc_y_[:,2])
-    axs[2, 1].set_title("deepc y position 3")
+    axs[2, 1].set_title("vertical deepc y position 3")
     fig.tight_layout()
     plt.show() 
+
 
 
     print((time.time() - start_time)/deepc_iter)
@@ -461,26 +465,20 @@ if __name__ == '__main__':
     # P_m[5, 2] = 10.95 
 
     # # check the weight of cost function
-    # temp_ = ca.vertcat
-    # cost_func = ca.mtimes([
-    #     (deepc_y_[:6, -1] - init_trajectory[:6, -1]).T,    
-    #     P_m,                      
-    #     deepc_y_[:6, -1] - init_trajectory[:6, -1]
-    #     ])
+    # temp_ = ca.vertcat(deepc_y_[:6, -1] - init_trajectory[:6, -1])
+    # obj = ca.mtimes([temp_.T, P_m, temp_])
+    # print("objective function", obj)
 
     # ## control cost, u_cost = (u-u_ref)*R*(u-u_ref)
     # # obj = []
+    # Tf = 25
     # for i in range(Tf-1):
     #     temp_ = ca.vertcat(deepc_u_[:, i] - control_ref[:, i])
-    #     obj = obj + ca.mtimes([
-    #         temp_.T, R_m, temp_
-    #         ])
+    #     obj = obj + ca.mtimes([temp_, R_m, temp_.T])
         
     # ## state cost, y_cost = (y-y_ref)*Q*(y-y_ref)
     # for i in range(Tf-1):
     #     temp_ = deepc_y_[:-1, i] - init_trajectory[:-1, i+1]   
-    #     obj = obj + ca.mtimes([temp_.T, Q_m, temp_])
+    #     obj = obj + ca.mtimes([temp_, Q_m, temp_.T])
 
     # print ("cost function \n", obj)
-
-   

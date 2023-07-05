@@ -54,18 +54,18 @@ if __name__ == '__main__':
 
     # Hankel Matrix
     ## controls to Hankel
-    saved_u = np.load('../Data_MPC/MPC_controls.npy', allow_pickle= True)
-    # print('saved controls \n', saved_u)
+    # saved_u = np.load('../Data_MPC/MPC_controls.npy', allow_pickle= True)
+    saved_u = np.load('../Data_MPC/MPC_controls2.npy', allow_pickle= True)
     DeePC = M_data()
     H_u = np.zeros((Tini + Tf, Td-L+1, saved_u.shape[1]))
     for i in range(Td):
         H_u = DeePC.hankel(saved_u[:], L, Td-L+1)
     # print("Hankel_u is:", H_u)
     print("Hankel_u's shape is:", H_u.shape)
-    # rank_Hu = np.linalg.matrix_rank(H_u)
 
     ## states to Hankel
-    saved_y = np.load('../Data_MPC/MPC_states.npy', allow_pickle= True)
+    # saved_y = np.load('../Data_MPC/MPC_states.npy', allow_pickle= True)
+    saved_y = np.load('../Data_MPC/MPC_states2.npy', allow_pickle= True)
     H_y = np.zeros((Tini + Tf, Td-L+1, saved_y.shape[1])) 
     for i in range(Td):
         H_y = DeePC.hankel(saved_y[:], L, Td-L+1)
@@ -97,32 +97,61 @@ if __name__ == '__main__':
     print("Y_p \n", Y_p.shape)
     print("Y_f \n", Y_f.shape)
 
+    # Y_ref = np.array(
+    #     [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.0, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.1, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.1, 0.0, 0.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.1, 0.0, 0.69, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.2, 0.0, 0.73, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.2, 0.0, 0.76, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.2, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.2, 0.0, 0.83, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.3, 0.0, 0.85, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.3, 0.0, 0.88, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.4, 0.0, 0.91, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.5, 0.0, 0.93, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.5, 0.0, 0.95, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.7, 0.0, 0.97, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.8, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [0.9, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    #     [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    #     ])
+
+    # soft constraints
     Y_ref = np.array(
         [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.1, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.1, 0.0, 0.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.1, 0.0, 0.69, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.2, 0.0, 0.73, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.2, 0.0, 0.76, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.2, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.2, 0.0, 0.83, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.3, 0.0, 0.85, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.3, 0.0, 0.88, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.4, 0.0, 0.91, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.5, 0.0, 0.93, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.5, 0.0, 0.95, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.7, 0.0, 0.97, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.8, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [0.9, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        [0.0, 0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.69, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.73, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.76, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.83, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.85, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.88, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.91, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.93, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.95, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.97, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         ])
     
     Y_ref = Y_ref.T   # (9,25)
@@ -145,11 +174,20 @@ if __name__ == '__main__':
     rank_Yf = np.linalg.matrix_rank(Y_f)
     print("Hankel_yf's rank is:", rank_Yf)
     
-    deepc_u_ = np.load('../Data_MPC/deepc_u.npy', allow_pickle= True)
+    # # hard constraints
+    # deepc_u_ = np.load('../Data_MPC/deepc_u.npy', allow_pickle= True)
+    # # print('saved deepc u \n', deepc_u_)   # deepc u shape(24,3)
+    # deepc_y_ = np.load('../Data_MPC/deepc_y.npy', allow_pickle= True)
+    # # print('saved deepc y \n', deepc_y_)   # deepc y shape(25,9)
+    # deepc_g_ = np.load('../Data_MPC/deepc_g.npy', allow_pickle= True)
+
+    # soft constraints
+    deepc_u_ = np.load('../Data_MPC/deepc_u_vertical.npy', allow_pickle= True)
     # print('saved deepc u \n', deepc_u_)   # deepc u shape(24,3)
-    deepc_y_ = np.load('../Data_MPC/deepc_y.npy', allow_pickle= True)
+    deepc_y_ = np.load('../Data_MPC/deepc_y_vertical.npy', allow_pickle= True)
     # print('saved deepc y \n', deepc_y_)   # deepc y shape(25,9)
-    deepc_g_ = np.load('../Data_MPC/deepc_g.npy', allow_pickle= True)
+    deepc_g_ = np.load('../Data_MPC/deepc_g_vertical.npy', allow_pickle= True)
+
     print('saved deepc g \n', deepc_g_.shape)   # deepc g shape(301,1)
     deepc_u_ = deepc_u_.T
     deepc_y_ = deepc_y_.T
@@ -187,45 +225,41 @@ if __name__ == '__main__':
         obj += ca.mtimes([temp_.T, Q_m, temp_])
     print("stage cost weight \n", obj)
 
-    # constraints cost
-    lambda_s = 1e3
-    g_norm = ca.norm_2(ca.mtimes([Y_p,deepc_g_])-ca.reshape(y_ini, (-1, 1)))**2   # G from Yp
-    obj2 = lambda_s*g_norm
-    print("constraints cost weight \n", g_norm)
+    # # constraints cost
+    # lambda_s = 1e3
+    # g_norm = ca.norm_2(ca.mtimes([Y_p,deepc_g_])-ca.reshape(y_ini, (-1, 1)))**2   # G from Yp
+    # obj2 = lambda_s*g_norm
+    # print("constraints cost weight \n", g_norm)
 
-    # r(g)
-    r_g = []
-    lambda_g = 500
-    stacked_ur_Tini = ca.repmat(U_ref[:,0], 1, Tini) 
-    stacked_yr_Tini = ca.repmat(Y_ref[:, 24], 1, Tini)
-    stacked_ur_Tf = ca.repmat(U_ref[:,0],1, Tf-1)
-    stacked_yr_Tf = ca.repmat(Y_ref[:, 24], 1, Tf)
-    
-    # print("stacked1 shape:", stacked_ur_Tini.shape)
-    # print("stacked2 shape:", stacked_yr_Tini.shape)
-    # print("stacked3 shape:", stacked_ur_Tf.shape)
-    # print("stacked4 shape:", stacked_yr_Tf.shape)
-    stacked = ca.vertcat(
-        ca.reshape(stacked_yr_Tini, -1, 1),    # Tini & Y_ref
-        ca.reshape(stacked_yr_Tf, -1, 1),      # Tf & Y_ref
-        ca.reshape(stacked_ur_Tini, -1, 1),    # Tini & U_ref
-        ca.reshape(stacked_ur_Tf, -1, 1)       # Tf & U_ref
-        )
+    # # r(g)
+    # r_g = []
+    # lambda_g = 500
+    # stacked_ur_Tini = ca.repmat(U_ref[:,0], 1, Tini) 
+    # stacked_yr_Tini = ca.repmat(Y_ref[:, 24], 1, Tini)
+    # stacked_ur_Tf = ca.repmat(U_ref[:,0],1, Tf-1)
+    # stacked_yr_Tf = ca.repmat(Y_ref[:, 24], 1, Tf)
 
-    print("stacked shape:", stacked.shape)
+    # stacked = ca.vertcat(
+    #     ca.reshape(stacked_yr_Tini, -1, 1),    # Tini & Y_ref
+    #     ca.reshape(stacked_yr_Tf, -1, 1),      # Tf & Y_ref
+    #     ca.reshape(stacked_ur_Tini, -1, 1),    # Tini & U_ref
+    #     ca.reshape(stacked_ur_Tf, -1, 1)       # Tf & U_ref
+    #     )
 
-    combined_inv = np.load('../Data_MPC/inverse.npy', allow_pickle= True)
-    # print('saved inverse \n', saved_inv)
+    # print("stacked shape:", stacked.shape)
 
-    t_ = time.time()
-    G_ref = ca.mtimes(combined_inv, stacked)
-    # print("G_ref shape:", G_ref.shape)
-    end_time = time.time()
-    # print('time for multi \n', end_time-t_)
-    t_ = time.time()
-    reg = ca.norm_2(deepc_g_-G_ref)
-    r_g = lambda_g*ca.norm_2(deepc_g_-G_ref)
-    # print("r(g) shape:", r_g.shape)
-    end_time = time.time()
-    # print('time for multi \n', end_time-t_)
-    print("regularization func weight \n", reg)
+    # combined_inv = np.load('../Data_MPC/inverse.npy', allow_pickle= True)
+    # # print('saved inverse \n', saved_inv)
+
+    # t_ = time.time()
+    # G_ref = ca.mtimes(combined_inv, stacked)
+    # # print("G_ref shape:", G_ref.shape)
+    # end_time = time.time()
+    # # print('time for multi \n', end_time-t_)
+    # t_ = time.time()
+    # reg = ca.norm_2(deepc_g_-G_ref)
+    # r_g = lambda_g*ca.norm_2(deepc_g_-G_ref)
+    # # print("r(g) shape:", r_g.shape)
+    # end_time = time.time()
+    # # print('time for multi \n', end_time-t_)
+    # print("regularization func weight \n", reg)

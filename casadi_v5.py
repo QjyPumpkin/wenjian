@@ -16,7 +16,7 @@ from data_collection import handle_data
 
 class MPC_test():
     def __init__(self, state_dim, dt=0.1, N=25):
-    # def __init__(self, state_dim, dt=0.1, N=25, prbs_seed=1):
+    # def __init__(self, state_dim, dt=0.1, N=25, prbs_seed=7):
         self.Ts = dt
         self.horizon = N
         self.g_ = 9.8066
@@ -285,12 +285,12 @@ if __name__ == '__main__':
     dt = 0.1
     # create an MPC object
     mpc_obj = MPC_test(state_dim=n_states, dt=dt, N=N)
-    # mpc_obj = MPC_test(state_dim=n_states, dt=dt, N=N, prbs_seed=1)
+    # mpc_obj = MPC_test(state_dim=n_states, dt=dt, N=N, prbs_seed=7)
     init_state = np.array([0.0]*n_states)
     current_state = init_state.copy()
     opt_commands = np.zeros((N-1, n_controls))
     next_states = np.zeros((N, n_states))
-    # approach 2:random inputs
+    # # approach 2:random inputs
     # prbs_signal = mpc_obj.prbs_signal(N-1, n_controls)
     # opt_commands = prbs_signal.copy()
 
@@ -400,11 +400,14 @@ if __name__ == '__main__':
     # data_save.save_loaded_data(
     #     file_name = '../Data_MPC/casadi_data' + time_index + '.npy')
     
+    # approach 1 : normal input
+    print("opt commands random \n", opt_commands)
     data_save.save_loaded_u(
         file_name = '../Data_MPC/MPC_controls_v5.npy')
     data_save.save_loaded_x(
         file_name = '../Data_MPC/MPC_states_v5.npy')
-    # approach 2: random inputs
+    # # approach 2: random inputs
+    # print("opt commands random \n", opt_commands)
     # data_save.save_loaded_u(
     #     file_name = '../Data_MPC/MPC_controls_random.npy')
     # data_save.save_loaded_x(
@@ -413,10 +416,10 @@ if __name__ == '__main__':
     print("save npy done")
     # print('opt_x \n',data_save.opt_x)
     # print('opt_u \n',data_save.opt_u)
-    
     # file_name = '../Data_MPC/casadi_data' + time_index + '.npy'
     # data = np.load(file_name, allow_pickle=True)
 
+    # approach 1
     file_name = '../Data_MPC/MPC_states_v5.npy'
     saved_states = np.load(file_name, allow_pickle=True)
     print("saved states are: \n", saved_states)
@@ -428,11 +431,11 @@ if __name__ == '__main__':
     # # approach 2
     # file_name = '../Data_MPC/MPC_states_random.npy'
     # saved_states = np.load(file_name, allow_pickle=True)
-    # print("saved states are: \n", saved_states)
+    # print("saved random states are: \n", saved_states)
 
     # file_name = '../Data_MPC/MPC_controls_random.npy'
     # saved_controls = np.load(file_name, allow_pickle=True)
-    # print("saved controls are: \n", saved_controls)
+    # print("saved random controls are: \n", saved_controls)
 
     # plot opt u & y
     ## see test_for_plot

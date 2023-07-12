@@ -16,9 +16,11 @@ from data_collection import handle_data
 
 class MPC_test():
     def __init__(self, state_dim, dt=0.1, N=25):
+    # def __init__(self, state_dim, dt=0.1, N=25, prbs_seed=1):
         self.Ts = dt
         self.horizon = N
         self.g_ = 9.8066
+        # self.prbs_seed = prbs_seed
         # linear_drag_coefficient = [0.01, 0.01]
 
         # declare model variables
@@ -114,6 +116,13 @@ class MPC_test():
         X = ca.SX.sym('X', num_states, self.horizon)
         X_ref = ca.SX.sym('X_ref', num_states, self.horizon)
         F_ext = ca.SX.sym('F_ext', 3)
+
+        # # Generate PRBS signal for control inputs
+        # prbs_signal = self.prbs_signal(num_controls, self.horizon-1)
+
+        # # Use the PRBS signal as the initial guess for control inputs
+        # U = prbs_signal
+
         ## constraints and cost
         ### terminal constraint
         obj = ca.mtimes([
@@ -124,7 +133,7 @@ class MPC_test():
         ### control cost
         for i in range(self.horizon-1):
             temp_ = ca.vertcat(U[:2, i], np.cos(X[6, i])*np.cos(X[7, i])*U[2, i] - self.g_)
-            print("temp_ shape is:", temp_.shape)
+            # print("temp_ shape is:", temp_.shape)
             obj = obj + ca.mtimes([
                 temp_.T, self.R_m, temp_
             ])
@@ -148,6 +157,14 @@ class MPC_test():
         opts_setting = {'ipopt.max_iter':200, 'ipopt.print_level':1, 'print_time':0, 'ipopt.acceptable_tol':1e-8, 'ipopt.acceptable_obj_change_tol':1e-6, 'ipopt.warm_start_init_point':'no'}
 
         self.solver = ca.nlpsol('solver', 'ipopt', nlp_prob, opts_setting) 
+    
+    # random input
+    def prbs_signal(self, N, num_controls):
+        np.random.seed(self.prbs_seed)
+        prbs_signal = np.random.randint(0, 2, size=(N, num_controls))
+        prbs_signal[prbs_signal == 0] = -1
+        return prbs_signal
+
 
     def aero_drag(self, states, controls):
         # aero dynamic drag acceleration
@@ -245,31 +262,8 @@ class MPC_test():
             # print(iter)
             # print(trajectory_[:4])
         return self.trajectory
-    # def circle_trajectory(self, current_state, iter):
-
-    #     #print("current_state",current_state, 'iter',iter)
-    #     if iter<=30:
-    #         if current_state[2] >= self.trajectory[0, 2]:
-    #             self.trajectory = np.concatenate((current_state.reshape(1, -1), self.trajectory[2:], self.trajectory[-1:]))
-    #     else:
-
-    #         #idx_ = np.array([(iter+i-30)/360.0*np.pi for i in range(19)])
-    #         idx_= np.array([(iter+i-30) for i in range(19)])
-
-    #         #print("idx_",idx_,iter)
-    #         trajectory_ =  self.trajectory[1:].copy()
-
-    #         # trajectory_[:, :2] = np.concatenate((self.spx[idx_], self.spy[idx_])).reshape(2, -1).T
-
-    #         trajectory_[:, :2] = np.concatenate((self.spx[idx_], self.spy[idx_])).reshape(2, -1).T
-    #         # print('new point',np.concatenate((np.cos(idx_), np.cos(idx_))).reshape(2, -1).T)
-    #         self.trajectory = np.concatenate((current_state.reshape(1, -1), trajectory_))
-
-
-
-            # print(iter)
-            # print(trajectory_[:4])
-        return self.trajectory
+    
+    
     # def estimated_penalty_end_term(self):
     #     A = np.diag([1.0, 1.0, 1.0,
     #                 -self.linear_drag_coefficient[0], -self.linear_drag_coefficient[1], 0.0])
@@ -291,10 +285,14 @@ if __name__ == '__main__':
     dt = 0.1
     # create an MPC object
     mpc_obj = MPC_test(state_dim=n_states, dt=dt, N=N)
+    # mpc_obj = MPC_test(state_dim=n_states, dt=dt, N=N, prbs_seed=1)
     init_state = np.array([0.0]*n_states)
     current_state = init_state.copy()
     opt_commands = np.zeros((N-1, n_controls))
     next_states = np.zeros((N, n_states))
+    # approach 2:random inputs
+    # prbs_signal = mpc_obj.prbs_signal(N-1, n_controls)
+    # opt_commands = prbs_signal.copy()
 
     init_trajectory = np.array([
         [0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -403,9 +401,14 @@ if __name__ == '__main__':
     #     file_name = '../Data_MPC/casadi_data' + time_index + '.npy')
     
     data_save.save_loaded_u(
-        file_name = '../Data_MPC/MPC_controls2.npy')
+        file_name = '../Data_MPC/MPC_controls_v5.npy')
     data_save.save_loaded_x(
-        file_name = '../Data_MPC/MPC_states2.npy')
+        file_name = '../Data_MPC/MPC_states_v5.npy')
+    # approach 2: random inputs
+    # data_save.save_loaded_u(
+    #     file_name = '../Data_MPC/MPC_controls_random.npy')
+    # data_save.save_loaded_x(
+    #     file_name = '../Data_MPC/MPC_states_random.npy')
     
     print("save npy done")
     # print('opt_x \n',data_save.opt_x)
@@ -414,13 +417,22 @@ if __name__ == '__main__':
     # file_name = '../Data_MPC/casadi_data' + time_index + '.npy'
     # data = np.load(file_name, allow_pickle=True)
 
-    file_name = '../Data_MPC/MPC_states2.npy'
+    file_name = '../Data_MPC/MPC_states_v5.npy'
     saved_states = np.load(file_name, allow_pickle=True)
     print("saved states are: \n", saved_states)
 
-    file_name = '../Data_MPC/MPC_controls2.npy'
+    file_name = '../Data_MPC/MPC_controls_v5.npy'
     saved_controls = np.load(file_name, allow_pickle=True)
     print("saved controls are: \n", saved_controls)
+
+    # # approach 2
+    # file_name = '../Data_MPC/MPC_states_random.npy'
+    # saved_states = np.load(file_name, allow_pickle=True)
+    # print("saved states are: \n", saved_states)
+
+    # file_name = '../Data_MPC/MPC_controls_random.npy'
+    # saved_controls = np.load(file_name, allow_pickle=True)
+    # print("saved controls are: \n", saved_controls)
 
     # plot opt u & y
     ## see test_for_plot
